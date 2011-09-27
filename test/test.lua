@@ -1,6 +1,6 @@
 require("copas")
 require("socket")
-require("timer")
+require("copastimer")
 host = "localhost"
 port = 50000
 
