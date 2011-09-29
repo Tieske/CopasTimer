@@ -42,15 +42,6 @@
 
 <!-- File list -->
 
-<h1>Files</h1>
-<ul>
-
-	<li>
-		<a href="../files/copastimer.html">copastimer.lua</a>
-	</li>
-
-</ul>
-
 
 
 
@@ -62,7 +53,7 @@
 
 <h1>Module <code>copas.timer</code></h1>
 
-<p>Copas Timer is a module that adds a timer capability to the Copas scheduler. It provides the same base functions <code>step</code> and <code>loop</code> as Copas except that it will also check for timers expiring. In addition to those standard Copas functions, it also adds an <code>isexiting</code> field that allows for a controlled exit from the loop.<br/> Copas Timer is free software and uses the same license as Lua.</p>
+<p>Copas Timer is a module that adds a timer capability to the Copas scheduler. It provides the same base functions <code>step</code> and <code>loop</code> as Copas except that it will also check for timers expiring. In addition to those standard Copas functions, it also adds an <code>isexiting</code> field that allows for a controlled exit from the loop.<br/>&nbspCopas Timer is free software and uses the same license as Lua.</p>
 
 <p>Copyright &copy; 2011 Thijs Schreijer</p>
 
@@ -160,7 +151,7 @@ Arms a previously created timer
 
 
 <h3>Usage:</h3>
-<ul><pre class=example>-- Create a new timer<br />local t = copas.timer.create(nil, function () print("hello world") end, nil, false)<br />t:arm(5)              -- arm it at 5 seconds<br />t:cancel()            -- cancel it again</pre></ul>
+<ul><pre class=example>-- Create a new timer<br/>local t = copas.timer.create(nil, function () print("hello world") end, nil, false)<br/>t:arm(5)              -- arm it at 5 seconds<br/>t:cancel()            -- cancel it again</pre></ul>
 
 
 
@@ -189,7 +180,7 @@ Cancels a previously armed timer
 
 
 <h3>Usage:</h3>
-<ul><pre class=example>-- Create a new timer<br />local t = copas.timer.create(nil, function () print("hello world") end, nil, false)<br />t:arm(5)              -- arm it at 5 seconds<br />t:cancel()            -- cancel it again</pre></ul>
+<ul><pre class=example>-- Create a new timer<br/>local t = copas.timer.create(nil, function () print("hello world") end, nil, false)<br/>t:arm(5)              -- arm it at 5 seconds<br/>t:cancel()            -- cancel it again</pre></ul>
 
 
 
@@ -272,7 +263,7 @@ Checks the network connection of the system and detects changes in connection or
 
 
 <h3>Usage:</h3>
-<ul><pre class=example>function test()<br />    print ("TEST: entering endless check loop, change connection settings and watch the changes come in...")<br />    require ("base")	-- from stdlib to pretty print the table<br />    local change, data<br />    while true do<br />        change, data = copas.timer.checknetwork(data)<br />        if change then<br />            print (prettytostring(data))<br />        end<br />    end<br />end</pre></ul>
+<ul><pre class=example>function test()<br/>&nbsp&nbsp&nbsp&nbspprint ("TEST: entering endless check loop, change connection settings and watch the changes come in...")<br/>&nbsp&nbsp&nbsp&nbsprequire ("base")	-- from stdlib to pretty print the table<br/>&nbsp&nbsp&nbsp&nbsplocal change, data<br/>&nbsp&nbsp&nbsp&nbspwhile true do<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspchange, data = copas.timer.checknetwork(data)<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspif change then<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspprint (prettytostring(data))<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspend<br/>&nbsp&nbsp&nbsp&nbspend<br/>end</pre></ul>
 
 
 
@@ -326,7 +317,7 @@ Creates a new timer. After creating call the <code>arm</code> method of the new 
 
 
 <h3>Usage:</h3>
-<ul><pre class=example>-- Create a new timer<br />local t = copas.timer.create(nil, function () print("hello world") end, nil, false, nil)<br />&nbsp;<br />-- Create timer and arm it immediately, to be run in 5 seconds<br />copas.timer.create(nil, function () print("hello world") end, nil, false, nil):arm(5)<br />&nbsp;<br />-- Create timer and arm it immediately, to be run now (function f is provide twice!) and again every 5 seconds<br />local f = function () print("hello world") end<br />copas.timer.create(f, f, nil, true, nil):arm(5)</pre></ul>
+<ul><pre class=example>-- Create a new timer<br/>local t = copas.timer.create(nil, function () print("hello world") end, nil, false, nil)<br/>&nbsp;<br/>-- Create timer and arm it immediately, to be run in 5 seconds<br/>copas.timer.create(nil, function () print("hello world") end, nil, false, nil):arm(5)<br/>&nbsp;<br/>-- Create timer and arm it immediately, to be run now (function f is provide twice!) and again every 5 seconds<br/>local f = function () print("hello world") end<br/>copas.timer.create(f, f, nil, true, nil):arm(5)</pre></ul>
 
 
 
@@ -346,7 +337,7 @@ Indicator of the loop running or exiting (it is a field, not a function!). Possi
 
 
 <h3>Usage:</h3>
-<ul><pre class=example>if copas.timer.isexiting ~= nil then<br />    -- loop is currently running, make it exit after the next iteration<br />    copas.timer.isexiting = true<br />end</pre></ul>
+<ul><pre class=example>if copas.timer.isexiting ~= nil then<br/>&nbsp&nbsp&nbsp&nbsp-- loop is currently running, make it exit after the next iteration<br/>&nbsp&nbsp&nbsp&nbspcopas.timer.isexiting = true<br/>end</pre></ul>
 
 
 

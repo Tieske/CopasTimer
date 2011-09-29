@@ -100,7 +100,7 @@ end
 -- <li><code>false</code>: the loop is running, or </li>
 -- <li><code>true</code>: the loop is scheduled to stop after
 -- the current iteration.</li></ul>
--- @usage if copas.timer.isexiting ~= nil then
+-- @usage# if copas.timer.isexiting ~= nil then
 --     -- loop is currently running, make it exit after the next iteration
 --     copas.timer.isexiting = true
 -- end
@@ -118,7 +118,7 @@ isexiting = nil
 -- the same interval after it expired
 -- @param f_error callback function to execute when any of the other callbacks
 -- generates an error
--- @usage -- Create a new timer
+-- @usage# -- Create a new timer
 -- local t = copas.timer.create(nil, function () print("hello world") end, nil, false, nil)
 -- &nbsp;
 -- -- Create timer and arm it immediately, to be run in 5 seconds
@@ -135,7 +135,7 @@ create = function(f_arm, f_expire, f_cancel, recurring, f_error)
 -- Arms a previously created timer
 -- @name <code>t:</code>arm</code>
 -- @param interval the interval after which the timer expires (in seconds)
--- @usage -- Create a new timer
+-- @usage# -- Create a new timer
 -- local t = copas.timer.create(nil, function () print("hello world") end, nil, false)
 -- t:arm(5)              -- arm it at 5 seconds
 -- t:cancel()            -- cancel it again
@@ -161,7 +161,7 @@ create = function(f_arm, f_expire, f_cancel, recurring, f_error)
 -------------------------------------------------------------------------------
 -- Cancels a previously armed timer
 -- @name <code>t:</code>cancel</code>
--- @usage -- Create a new timer
+-- @usage# -- Create a new timer
 -- local t = copas.timer.create(nil, function () print("hello world") end, nil, false)
 -- t:arm(5)              -- arm it at 5 seconds
 -- t:cancel()            -- cancel it again
@@ -194,7 +194,7 @@ end
 -- <li><code>localhostip   </code>= (string) ip address resolved for <code>localhostname</code></li>
 -- <li><code>connected     </code>= (string) either <code>'yes'</code>, <code>'no'</code>, or <code>'loopback'</code> (loopback means connected to localhost, no external connection)</li>
 -- <li><code>changed       </code>= (boolean) <code>true</code> if <code>oldstate</code> is different on either; <code>name</code>, <code>connected</code>, or <code>ip[1]</code> properties</li></ul>
--- @usage function test()
+-- @usage# function test()
 --     print ("TEST: entering endless check loop, change connection settings and watch the changes come in...")
 --     require ("base")	-- from stdlib to pretty print the table
 --     local change, data
