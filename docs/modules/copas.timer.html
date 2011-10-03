@@ -60,7 +60,7 @@
 
 
 
-<p><b>Release:</b> Version 0.1, Timer module to extend Copas with a timer capability
+<p><b>Release:</b> Version 0.2, Timer module to extend Copas with a timer capability
 </p>
 
 
@@ -96,6 +96,11 @@
 	<tr>
 	<td class="name" nowrap><a href="#create">create</a>&nbsp;(f_arm, f_expire, f_cancel, recurring, f_error)</td>
 	<td class="summary">Creates a new timer.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#delayedexecutioner">delayedexecutioner</a>&nbsp;(delay, func, ...)</td>
+	<td class="summary">Calls a function delayed, after the specified amount of time.</td>
 	</tr>
 
 	<tr>
@@ -318,6 +323,40 @@ Creates a new timer. After creating call the <code>arm</code> method of the new 
 
 <h3>Usage:</h3>
 <ul><pre class=example>-- Create a new timer<br/>local t = copas.timer.create(nil, function () print("hello world") end, nil, false, nil)<br/>&nbsp;<br/>-- Create timer and arm it immediately, to be run in 5 seconds<br/>copas.timer.create(nil, function () print("hello world") end, nil, false, nil):arm(5)<br/>&nbsp;<br/>-- Create timer and arm it immediately, to be run now (function f is provide twice!) and again every 5 seconds<br/>local f = function () print("hello world") end<br/>copas.timer.create(f, f, nil, true, nil):arm(5)</pre></ul>
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="delayedexecutioner"></a><strong>delayedexecutioner</strong>&nbsp;(delay, func, ...)</dt>
+<dd>
+Calls a function delayed, after the specified amount of time.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>delay</em></code>: delay in seconds before calling the function
+	</li>
+	
+	<li>
+	  <code><em>func</em></code>: function to call
+	</li>
+	
+	<li>
+	  <code><em>...</em></code>: any arguments to be passed to the function
+	</li>
+	
+</ul>
+
+
+
 
 
 

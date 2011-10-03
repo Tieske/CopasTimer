@@ -10,7 +10,7 @@ require("coxpcall")
 -- that allows for a controlled exit from the loop.<br/>
 -- Copas Timer is free software and uses the same license as Lua.
 -- @copyright 2011 Thijs Schreijer
--- @release Version 0.1, Timer module to extend Copas with a timer capability
+-- @release Version 0.2, Timer module to extend Copas with a timer capability
 module ("copas.timer", package.seeall)
 
 local timerid = 1		-- counter to create unique timerid's
@@ -184,6 +184,24 @@ cancelall = function()
     end
 end
 
+
+-------------------------------------------------------------------------------
+-- Calls a function delayed, after the specified amount of time.
+-- An example use is a call that requires communications to be running already,
+-- but if you start the CopasTimer loop, it basically blocks; classic chicken-egg. In this case use the
+-- <code>delayedexecutioner</code> to call the method in 0.5 seconds, just before
+-- starting the CopasTimer loop. Now when the method actually executes, communications
+-- will be online already.
+-- @param delay delay in seconds before calling the function
+-- @param func function to call
+-- @param ... any arguments to be passed to the function
+delayedexecutioner = function (delay, func, ...)
+    local list = {...}
+    local f = function()
+        func(unpack(list))
+    end
+    create(nil, f, nil, false):arm(delay)
+end
 -------------------------------------------------------------------------------
 -- Checks the network connection of the system and detects changes in connection or IP adress.
 -- Call repeatedly to check status for changes. With every call include the previous results to compare with.
