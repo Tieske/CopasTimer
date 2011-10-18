@@ -184,6 +184,61 @@ cancelall = function()
     end
 end
 
+-------------------------------------------------------------------------------
+-- Executes a single Copas step followed by the execution of the first expired
+-- (if any) timer in the timers list.
+-- @param timeout timeout value (in seconds) to pass to the Copas step handler
+-- @param precision see parameter <code>precision</code> at function <code>loop()</code>.
+-- @return time in seconds until the next timer in the list expires, or
+-- <code>nil</code> if there is none
+step = function (timeout, precision)
+    copas.step(timeout)
+    return timercheck(precision or PRECISION)
+end
+
+-------------------------------------------------------------------------------
+-- Executes an endless loop handling Copas steps and timers.
+-- The loop can be terminated by setting <code>isexiting</code> to true. When
+-- exiting the loop, consider call <code>cancelall()</code> to make sure all
+-- armed timers get properly cancelled and their <code>cancel</code> callbacks
+-- get called properly.
+-- @param timeout time out (in seconds) to be used. The timer list
+-- will be checked at least every <code>timeout</code> period for expired timers. The
+-- actual interval will be between <code>0.001</code> and <code>timeout</code> based on the next
+-- timers expire time. If not provided, it defaults to 5 seconds.
+-- @param precision the precision of the timer (in seconds). Whenever the timer
+-- list is checked for expired timers, a timer is considered expired when the exact
+-- expire time is in the past or up to <code>precision</code> seconds in the future.
+-- It defaults to 0.02 if not provided.
+loop = function (timeout, precision)
+    timeout = timeout or TIMEOUT
+    precision = precision or PRECISION
+    isexiting = false
+    -- execute single timercheck and get time to next timer expiring
+    local nextstep = timercheck(precision) or timeout
+    -- enter the loop
+    while not isexiting do
+        -- verify next expiry time
+        if nextstep > timeout then
+            nextstep = timeout
+        elseif nextstep < 0.001 then
+            nextstep = 0.001
+        end
+        -- run copas step and timercheck
+        nextstep = step(nextstep, precision) or timeout
+    end
+    isexiting = nil
+end
+
+
+--=============================================================================
+--=============================================================================
+--
+--      UTILITY FUNCTIONS BASED ON COPASTIMER
+--
+--=============================================================================
+--=============================================================================
+
 
 -------------------------------------------------------------------------------
 -- Calls a function delayed, after the specified amount of time.
@@ -281,50 +336,4 @@ function addcheck(handler, interval, errhandler)
 	else
 		return create(checker,checker,nil,true, nil)
 	end
-end
-
--------------------------------------------------------------------------------
--- Executes a single Copas step followed by the execution of the first expired
--- (if any) timer in the timers list.
--- @param timeout timeout value (in seconds) to pass to the Copas step handler
--- @param precision see parameter <code>precision</code> at function <code>loop()</code>.
--- @return time in seconds until the next timer in the list expires, or
--- <code>nil</code> if there is none
-step = function (timeout, precision)
-    copas.step(timeout)
-    return timercheck(precision or PRECISION)
-end
-
--------------------------------------------------------------------------------
--- Executes an endless loop handling Copas steps and timers.
--- The loop can be terminated by setting <code>isexiting</code> to true. When
--- exiting the loop, consider call <code>cancelall()</code> to make sure all
--- armed timers get properly cancelled and their <code>cancel</code> callbacks
--- get called properly.
--- @param timeout time out (in seconds) to be used. The timer list
--- will be checked at least every <code>timeout</code> period for expired timers. The
--- actual interval will be between <code>0.001</code> and <code>timeout</code> based on the next
--- timers expire time. If not provided, it defaults to 5 seconds.
--- @param precision the precision of the timer (in seconds). Whenever the timer
--- list is checked for expired timers, a timer is considered expired when the exact
--- expire time is in the past or up to <code>precision</code> seconds in the future.
--- It defaults to 0.02 if not provided.
-loop = function (timeout, precision)
-    timeout = timeout or TIMEOUT
-    precision = precision or PRECISION
-    isexiting = false
-    -- execute single timercheck and get time to next timer expiring
-    local nextstep = timercheck(precision) or timeout
-    -- enter the loop
-    while not isexiting do
-        -- verify next expiry time
-        if nextstep > timeout then
-            nextstep = timeout
-        elseif nextstep < 0.001 then
-            nextstep = 0.001
-        end
-        -- run copas step and timercheck
-        nextstep = step(nextstep, precision) or timeout
-    end
-    isexiting = nil
 end
