@@ -1,7 +1,3 @@
-copas = require("copas")
-socket = require("socket")
-require("coxpcall")
-
 -------------------------------------------------------------------------------
 -- Copas Timer is a module that adds a timer capability to the Copas scheduler.
 -- It provides the same base functions <code>step</code> and <code>loop</code>
@@ -10,14 +6,19 @@ require("coxpcall")
 -- that allows for a controlled exit from the loop.<br/>
 -- Copas Timer is free software and uses the same license as Lua.
 -- @copyright 2011 Thijs Schreijer
--- @release Version 0.2, Timer module to extend Copas with a timer capability
-module ("copas.timer", package.seeall)
+-- @release Version 0.3, Timer module to extend Copas with a timer capability
+
+local copas = require("copas")
+local socket = require("socket")
+require("coxpcall")
 
 local timerid = 1		-- counter to create unique timerid's
 local timers = {}		-- table with timers by their id
 local order = nil		-- linked list with timers sorted by expiry time, 'order' being the first to expire
 local PRECISION = 0.02  -- default precision value
 local TIMEOUT = 5       -- default timeout value
+local copasstep = copas.step    -- store original function
+local copasloop = copas.loop    -- store original function
 
 -------------------------------------------------------------------------------
 -- Remove an armed timer from the list of running timers
@@ -100,12 +101,12 @@ end
 -- <li><code>false</code>: the loop is running, or </li>
 -- <li><code>true</code>: the loop is scheduled to stop after
 -- the current iteration.</li></ul>
--- @usage# if copas.timer.isexiting ~= nil then
+-- @usage# if copas.isexiting ~= nil then
 --     -- loop is currently running, make it exit after the next iteration
---     copas.timer.isexiting = true
+--     copas.isexiting = true
 -- end
-isexiting = function() end	-- dummy to trick luadoc
-isexiting = nil
+copas.isexiting = function() end	-- dummy to trick luadoc
+copas.isexiting = nil
 
 -------------------------------------------------------------------------------
 -- Creates a new timer.
@@ -119,15 +120,15 @@ isexiting = nil
 -- @param f_error callback function to execute when any of the other callbacks
 -- generates an error
 -- @usage# -- Create a new timer
--- local t = copas.timer.create(nil, function () print("hello world") end, nil, false, nil)
+-- local t = copas.newtimer(nil, function () print("hello world") end, nil, false, nil)
 -- &nbsp;
 -- -- Create timer and arm it immediately, to be run in 5 seconds
--- copas.timer.create(nil, function () print("hello world") end, nil, false, nil):arm(5)
+-- copas.newtimer(nil, function () print("hello world") end, nil, false, nil):arm(5)
 -- &nbsp;
 -- -- Create timer and arm it immediately, to be run now (function f is provide twice!) and again every 5 seconds
 -- local f = function () print("hello world") end
--- copas.timer.create(f, f, nil, true, nil):arm(5)
-create = function(f_arm, f_expire, f_cancel, recurring, f_error)
+-- copas.newtimer(f, f, nil, true, nil):arm(5)
+copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
     return {
         interval = 1,
         recurring = recurring,
@@ -136,7 +137,7 @@ create = function(f_arm, f_expire, f_cancel, recurring, f_error)
 -- @name <code>t:</code>arm</code>
 -- @param interval the interval after which the timer expires (in seconds)
 -- @usage# -- Create a new timer
--- local t = copas.timer.create(nil, function () print("hello world") end, nil, false)
+-- local t = copas.newtimer(nil, function () print("hello world") end, nil, false)
 -- t:arm(5)              -- arm it at 5 seconds
 -- t:cancel()            -- cancel it again
         arm = function(self, interval)
@@ -162,7 +163,7 @@ create = function(f_arm, f_expire, f_cancel, recurring, f_error)
 -- Cancels a previously armed timer
 -- @name <code>t:</code>cancel</code>
 -- @usage# -- Create a new timer
--- local t = copas.timer.create(nil, function () print("hello world") end, nil, false)
+-- local t = copas.newtimer(nil, function () print("hello world") end, nil, false)
 -- t:arm(5)              -- arm it at 5 seconds
 -- t:cancel()            -- cancel it again
         cancel = function(self)
@@ -178,7 +179,7 @@ end
 -- Cancels all currently armed timers.
 -- Call this method after exiting the loop, to make sure all timers are properly
 -- cancelled and their cancel callback methods have been executed.
-cancelall = function()
+copas.cancelall = function()
     for _, t in pairs(timers) do
         t:cancel()
     end
@@ -191,8 +192,8 @@ end
 -- @param precision see parameter <code>precision</code> at function <code>loop()</code>.
 -- @return time in seconds until the next timer in the list expires, or
 -- <code>nil</code> if there is none
-step = function (timeout, precision)
-    copas.step(timeout)
+copas.step = function (timeout, precision)
+    copasstep(timeout)  -- call original copas step function
     return timercheck(precision or PRECISION)
 end
 
@@ -210,14 +211,14 @@ end
 -- list is checked for expired timers, a timer is considered expired when the exact
 -- expire time is in the past or up to <code>precision</code> seconds in the future.
 -- It defaults to 0.02 if not provided.
-loop = function (timeout, precision)
+copas.loop = function (timeout, precision)
     timeout = timeout or TIMEOUT
     precision = precision or PRECISION
-    isexiting = false
+    copas.isexiting = false
     -- execute single timercheck and get time to next timer expiring
     local nextstep = timercheck(precision) or timeout
     -- enter the loop
-    while not isexiting do
+    while not copas.isexiting do
         -- verify next expiry time
         if nextstep > timeout then
             nextstep = timeout
@@ -225,9 +226,9 @@ loop = function (timeout, precision)
             nextstep = 0.001
         end
         -- run copas step and timercheck
-        nextstep = step(nextstep, precision) or timeout
+        nextstep = copas.step(nextstep, precision) or timeout
     end
-    isexiting = nil
+    copas.isexiting = nil
 end
 
 
@@ -243,20 +244,21 @@ end
 -------------------------------------------------------------------------------
 -- Calls a function delayed, after the specified amount of time.
 -- An example use is a call that requires communications to be running already,
--- but if you start the CopasTimer loop, it basically blocks; classic chicken-egg. In this case use the
+-- but if you start the Copas loop, it basically blocks; classic chicken-egg. In this case use the
 -- <code>delayedexecutioner</code> to call the method in 0.5 seconds, just before
 -- starting the CopasTimer loop. Now when the method actually executes, communications
 -- will be online already.
 -- @param delay delay in seconds before calling the function
 -- @param func function to call
 -- @param ... any arguments to be passed to the function
-delayedexecutioner = function (delay, func, ...)
+copas.delayedexecutioner = function (delay, func, ...)
     local list = {...}
     local f = function()
         func(unpack(list))
     end
-    create(nil, f, nil, false):arm(delay)
+    copas.newtimer(nil, f, nil, false):arm(delay)
 end
+
 -------------------------------------------------------------------------------
 -- Checks the network connection of the system and detects changes in connection or IP adress.
 -- Call repeatedly to check status for changes. With every call include the previous results to compare with.
@@ -272,13 +274,13 @@ end
 --     require ("base")	-- from stdlib to pretty print the table
 --     local change, data
 --     while true do
---         change, data = copas.timer.checknetwork(data)
+--         change, data = copas.checknetwork(data)
 --         if change then
 --             print (prettytostring(data))
 --         end
 --     end
 -- end
-function checknetwork (oldState)
+function copas.checknetwork (oldState)
 	oldState = oldState or {}
 	oldState.alias = oldState.alias or {}
 	oldState.ip = oldState.ip or {}
@@ -317,7 +319,7 @@ end
 -- @param interval optional interval for checking in seconds. If provided the timer will be armed immediately, otherwise it has to be armed afterwards.
 -- @param errhandler optional errorhandler to be used for the <code>handler</code> callback function
 -- @return timer
-function addcheck(handler, interval, errhandler)
+function copas.addcheck(handler, interval, errhandler)
 	assert(type(handler) == "function", "Error, no handler function provided")
 	if interval then
 		assert(type(interval) == "number", "Error in parameter 'interval', expected number, got " .. type(interval))
@@ -325,15 +327,19 @@ function addcheck(handler, interval, errhandler)
 	end
 	local oldState
 	local checker = function()
-			local changed, newState = checknetwork(oldState)
+			local changed, newState = copas.checknetwork(oldState)
 			if changed then
 				coxpcall(function() handler(newState, oldState) end, errhandler or _missingerrorhandler)
 			end
 			oldState = newState
 		end
 	if interval then
-		return create(checker,checker,nil,true, nil):arm(interval)
+		return copas.newtimer(checker,checker,nil,true, nil):arm(interval)
 	else
-		return create(checker,checker,nil,true, nil)
+		return copas.newtimer(checker,checker,nil,true, nil)
 	end
 end
+
+
+-- return existing copas table
+return copas

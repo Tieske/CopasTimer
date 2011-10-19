@@ -35,17 +35,17 @@ function silly()
     lasttime = socket.gettime()
     if cnt == 0 then
         -- exit the loop
-        copas.timer.isexiting = true
+        copas.isexiting = true
     end
 end
 
-server = socket.bind(host, port)            -- create server
+server = socket.bind(host, port)            -- create a server
 copas.addserver(server, handle)
 
 print("Starting network checks, change your network and watch the changes come in")
-local t = copas.timer.addcheck(netchange)   -- create network check
+local t = copas.addcheck(netchange)   -- create network check
 t:arm(2)                                    -- arm the returned timer
-copas.timer.create(silly, silly, nil, true, nil):arm(5)  -- silly timer
-copas.timer.loop()                          -- enter loop
+copas.newtimer(silly, silly, nil, true, nil):arm(5)  -- silly timer
+copas.loop()                          -- enter loop
 print ("bye, bye...")
 
