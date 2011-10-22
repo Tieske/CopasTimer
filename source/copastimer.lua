@@ -1,12 +1,23 @@
 -------------------------------------------------------------------------------
 -- Copas Timer is a module that adds a timer capability to the Copas scheduler.
 -- It provides the same base functions <code>step</code> and <code>loop</code>
--- as Copas except that it will also check for timers expiring. In addition to
--- those standard Copas functions, it also adds an <code>isexiting</code> field
--- that allows for a controlled exit from the loop.<br/>
--- Copas Timer is free software and uses the same license as Lua.
+-- as Copas (it actually replaces them) except that it will also check for (and
+-- run) timers expiring and run background workers if there is no IO or timer to
+-- handle. It also adds an <code>isexiting</code> field that allows for a
+-- controlled exit from the loop.<br/>
+-- <br/>There is a difference between the 2 background mechanisms provided; the
+-- timers run on the main loop, should never yield and return quickly, but they
+-- are precise. On the other hand the workers run in their own thread (coroutine)
+-- and can be yielded if they take too long, but are less precisely timed.
+-- <br/><strong>Important:</strong> the workers should never wait for work to come in. They must
+-- exit when done. New work should create a new worker. The reason is that while
+-- there are worker threads available the luasocket <code>select</code> statement is called
+-- with a 0 timeout (non-blocking) to make sure background work is completed asap.
+-- If a worker waits for work (call <code>yield()</code> when it has nothing to do)
+-- it will create a busy-wait situation.<br/>
+-- <br/>Copas Timer is free software and uses the same license as Lua.
 -- @copyright 2011 Thijs Schreijer
--- @release Version 0.3, Timer module to extend Copas with a timer capability
+-- @release Version 0.4, Timer module to extend Copas with a timer and worker capability
 
 local copas = require("copas")
 local socket = require("socket")
@@ -17,6 +28,7 @@ local timers = {}		-- table with timers by their id
 local order = nil		-- linked list with timers sorted by expiry time, 'order' being the first to expire
 local PRECISION = 0.02  -- default precision value
 local TIMEOUT = 5       -- default timeout value
+local workers = {}      -- list with background worker threads
 local copasstep = copas.step    -- store original function
 local copasloop = copas.loop    -- store original function
 
@@ -28,7 +40,9 @@ local timerremove = function(t)
     if t.next then t.next.previous = t.previous end
 	t.next = nil
 	t.previous = nil
-    timers[t.id] = nil
+    if t.id then    -- fix: cancelling unarmed timer (no ID) error.
+        timers[t.id] = nil
+    end
 end
 
 -------------------------------------------------------------------------------
@@ -68,28 +82,134 @@ end
 -------------------------------------------------------------------------------
 -- Will be used as error handler if none provided
 local _missingerrorhandler = function(...)
-	print("Error in timer callback: ",  ... )
+	print("Error in timer callback/worker thread : ",  ... )
     print(debug.traceback)
+end
+
+-------------------------------------------------------------------------------
+-- Adds a background worker to the end of the thread list
+-- @param t thread table (see copas.addworker()) to add to the list
+local pushthread = function(t)
+    table.insert(workers, t)
+end
+
+-------------------------------------------------------------------------------
+-- Adds a background worker to the end of the thread list
+-- @param t thread table (see copas.addworker()) or actual thread (coroutine)
+-- to remove from the list. If nil then just the one on top will be popped.
+-- @return the popped thread table, or nil if it wasn't found
+local popthread = function(t)
+    if #workers == 0 then
+        return nil
+    end
+
+    if not t then
+        -- get the first one
+        return table.remove(workers, 1)
+    else
+        -- specific one specified, have to go look for it
+        for i, v in ipairs(workers) do
+            if v == t or v.thread == t then
+                -- found it, return it
+                return table.remove(workers, i)
+            end
+        end
+        -- wasn't found
+        return nil
+    end
+end
+
+-------------------------------------------------------------------------------
+-- Removes a worker thread
+-- @param t thread table (as returned by <code>copas.addworker()</code>), or actual thread
+-- to be removed.
+-- @return <code>true</code> if success or <code>false</code> if it wasn't found
+-- @see copas.addworker
+copas.removeworker = function(t)
+    if t then
+        if popthread(t) then
+            return true -- succeeded
+        else
+            return false    -- not found
+        end
+    else
+        return false    -- not found
+    end
+end
+
+-------------------------------------------------------------------------------
+-- Adds a worker thread. The threads will be executed when there is no IO nor
+-- any expiring timer to run. The <code>args</code> key of the returned table can be modified
+-- while the thread is still scheduled. After the <code>args</code> have been passed to
+-- <code>resume</code> the <code>args</code> will be set to <code>nil</code>. If <code>args</code> is set again, then the
+-- next time the thread is up to run, the new set of <code>args</code> will be passed on to the
+-- thread. This enables feeding the thread with data.
+-- @param func function to execute in the coroutine
+-- @param args table with arguments for the function
+-- @param errhandler function to handle any errors returned
+-- @return table with keys <code>thread, args, errhandler</code>
+-- @see copas.removeworker
+copas.addworker = function(func, args, errhandler)
+    local t = {
+        thread = coroutine.create(func),
+        args = args,
+        errhandler = errhandler or _missingerrorhandler,
+    }
+    pushthread(t)
+    return t
+end
+
+-------------------------------------------------------------------------------
+-- Runs work on background threads
+-- @return <code>true</code> if threads remain with work to do
+-- @return <code>nil</code> if nothing remains to be done
+local dowork = function()
+    local t = popthread()   -- get next in line worker
+    if t then
+        -- execute this thread
+        t.args = t.args or {}
+        local success, err = coroutine.resume(t.thread, unpack(t.args))
+        if not success then
+            t.errhandler(nil, err)
+        end
+        if coroutine.status(t.thread) ~= "dead" then
+            t.args = nil    -- handled those, so drop them
+            pushthread(t)   -- add thread to end of queue again for next run
+        end
+    end
+    return (#workers > 0)
 end
 
 -------------------------------------------------------------------------------
 -- Check timerlist whether next up timer has expired already
 -- @param precision up to how far in the future will a timer be considered expired
 -- @return time until next timer expires
+-- @return 0 if there is work to do (worker threads)
+-- @return <code>nil</code> if there is neither a timer running nor there is work to do
 local timercheck = function(precision)
     local result
-    if order then
-        if order.when <= (socket.gettime() + precision) then
-            -- expired, so must execute
-            local t = order
-            order = order.next
-            t:expire()
-        end
-        -- find next event
+    if order and (order.when <= (socket.gettime() + precision)) then
+        -- a timer expired, so must execute
+        local t = order
+        order = order.next
+        t:expire()
+    else
+        -- no timer to execute, so something else to do?
+        dowork()
+    end
+
+    -- When is the next piece of work to be done
+    if #workers ~= 0 then
+        result = 0  -- resume asap to get work done
+    else
         if order then
+            -- no work, wait for next timer
             result = order.when - socket.gettime()
+        else
+            -- nothing to do, no work nor timers, return nil
         end
     end
+
     return result
 end
 
@@ -105,13 +225,18 @@ end
 --     -- loop is currently running, make it exit after the next iteration
 --     copas.isexiting = true
 -- end
+-- @see copas.loop
 copas.isexiting = function() end	-- dummy to trick luadoc
 copas.isexiting = nil
 
 -------------------------------------------------------------------------------
 -- Creates a new timer.
 -- After creating call the <code>arm</code> method of the new timer to actually
--- schedule it.
+-- schedule it. REMARK: the background workers run in their own thread (coroutine)
+-- and hence need to <code>yield</code> when their operation takes to long, but
+-- the timers run on the main loop, and hence the callbacks should never
+-- <code>yield()</code>, in those cases consider adding a worker through
+-- <code>copas.addworker()</code> from the timer callback.
 -- @param f_arm callback function to execute when the timer is armed
 -- @param f_expire callback function to execute when the timer expires
 -- @param f_cancel callback function to execute when the timer is cancelled
@@ -128,18 +253,24 @@ copas.isexiting = nil
 -- -- Create timer and arm it immediately, to be run now (function f is provide twice!) and again every 5 seconds
 -- local f = function () print("hello world") end
 -- copas.newtimer(f, f, nil, true, nil):arm(5)
+-- @see t:arm
+-- @see t:cancel
+-- @see copas.cancelall
 copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
     return {
         interval = 1,
         recurring = recurring,
--------------------------------------------------------------------------------
--- Arms a previously created timer
--- @name <code>t:</code>arm</code>
--- @param interval the interval after which the timer expires (in seconds)
--- @usage# -- Create a new timer
--- local t = copas.newtimer(nil, function () print("hello world") end, nil, false)
--- t:arm(5)              -- arm it at 5 seconds
--- t:cancel()            -- cancel it again
+        -------------------------------------------------------------------------------
+        -- Arms a previously created timer
+        -- @name t:arm
+        -- @param interval the interval after which the timer expires (in seconds)
+        -- @return the timer <code>t</code>
+        -- @usage# -- Create a new timer
+        -- local t = copas.newtimer(nil, function () print("hello world") end, nil, false)
+        -- t:arm(5)              -- arm it at 5 seconds
+        -- t:cancel()            -- cancel it again
+        -- @see t:cancel
+        -- @see copas.newtimer
         arm = function(self, interval)
             self.interval = interval or self.interval
             self.when = socket.gettime() + interval
@@ -147,6 +278,7 @@ copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
             timeradd(self)
             -- run ARM handler
             if f_arm then coxpcall(f_arm, f_error or _missingerrorhandler) end
+            return self
         end,
         expire = function(self)
             -- remove from list
@@ -159,13 +291,15 @@ copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
                 timeradd(self)
             end
         end,
--------------------------------------------------------------------------------
--- Cancels a previously armed timer
--- @name <code>t:</code>cancel</code>
--- @usage# -- Create a new timer
--- local t = copas.newtimer(nil, function () print("hello world") end, nil, false)
--- t:arm(5)              -- arm it at 5 seconds
--- t:cancel()            -- cancel it again
+        -------------------------------------------------------------------------------
+        -- Cancels a previously armed timer
+        -- @name t:cancel
+        -- @usage# -- Create a new timer
+        -- local t = copas.newtimer(nil, function () print("hello world") end, nil, false)
+        -- t:arm(5)              -- arm it at 5 seconds
+        -- t:cancel()            -- cancel it again
+        -- @see t:arm
+        -- @see copas.newtimer
         cancel = function(self)
             -- remove self from timer list
             timerremove(self)
@@ -187,30 +321,34 @@ end
 
 -------------------------------------------------------------------------------
 -- Executes a single Copas step followed by the execution of the first expired
--- (if any) timer in the timers list.
+-- (if any) timer in the timers list (it replaces the original <code>copas.step()</code>)
+-- if there is no timer that expires then it will try to execute a worker step if available.
 -- @param timeout timeout value (in seconds) to pass to the Copas step handler
 -- @param precision see parameter <code>precision</code> at function <code>loop()</code>.
 -- @return time in seconds until the next timer in the list expires, or
--- <code>nil</code> if there is none
+-- <code>nil</code> if there is none.
+-- @see copas.loop
 copas.step = function (timeout, precision)
     copasstep(timeout)  -- call original copas step function
     return timercheck(precision or PRECISION)
 end
 
 -------------------------------------------------------------------------------
--- Executes an endless loop handling Copas steps and timers.
+-- Executes an endless loop handling Copas steps and timers  (it replaces the original <code>copas.loop()</code>).
 -- The loop can be terminated by setting <code>isexiting</code> to true. When
 -- exiting the loop, consider call <code>cancelall()</code> to make sure all
 -- armed timers get properly cancelled and their <code>cancel</code> callbacks
 -- get called properly.
 -- @param timeout time out (in seconds) to be used. The timer list
 -- will be checked at least every <code>timeout</code> period for expired timers. The
--- actual interval will be between <code>0.001</code> and <code>timeout</code> based on the next
--- timers expire time. If not provided, it defaults to 5 seconds.
+-- actual interval will be between <code>0</code> and <code>timeout</code> based on the next
+-- timers expire time or worker threads being available. If not provided, it defaults to 5 seconds.
 -- @param precision the precision of the timer (in seconds). Whenever the timer
 -- list is checked for expired timers, a timer is considered expired when the exact
 -- expire time is in the past or up to <code>precision</code> seconds in the future.
 -- It defaults to 0.02 if not provided.
+-- @see copas.step
+-- @see copas.isexiting
 copas.loop = function (timeout, precision)
     timeout = timeout or TIMEOUT
     precision = precision or PRECISION
@@ -222,8 +360,8 @@ copas.loop = function (timeout, precision)
         -- verify next expiry time
         if nextstep > timeout then
             nextstep = timeout
-        elseif nextstep < 0.001 then
-            nextstep = 0.001
+        elseif nextstep < 0 then
+            nextstep = 0
         end
         -- run copas step and timercheck
         nextstep = copas.step(nextstep, precision) or timeout
@@ -247,10 +385,12 @@ end
 -- but if you start the Copas loop, it basically blocks; classic chicken-egg. In this case use the
 -- <code>delayedexecutioner</code> to call the method in 0.5 seconds, just before
 -- starting the CopasTimer loop. Now when the method actually executes, communications
--- will be online already.
+-- will be online already. The internals use a timer, so it is executed on the main
+-- loop and should not be suspended by calling <code>yield()</code>.
 -- @param delay delay in seconds before calling the function
 -- @param func function to call
 -- @param ... any arguments to be passed to the function
+-- @see copas.newtimer
 copas.delayedexecutioner = function (delay, func, ...)
     local list = {...}
     local f = function()
@@ -259,87 +399,6 @@ copas.delayedexecutioner = function (delay, func, ...)
     copas.newtimer(nil, f, nil, false):arm(delay)
 end
 
--------------------------------------------------------------------------------
--- Checks the network connection of the system and detects changes in connection or IP adress.
--- Call repeatedly to check status for changes. With every call include the previous results to compare with.
--- @param oldState (table) previous result to compare with, or <code>nil</code> if not called before
--- @return changed (boolean) same as <code>newstate.changed</code> (see below).
--- @return newState (table) same as regular info from <code>socket.dns</code> calls, but extended with;
--- <ul><li><code>localhostname </code>= (string) name of localhost (only field that can be set, defaults to <code>'localhost'</code>)</li>
--- <li><code>localhostip   </code>= (string) ip address resolved for <code>localhostname</code></li>
--- <li><code>connected     </code>= (string) either <code>'yes'</code>, <code>'no'</code>, or <code>'loopback'</code> (loopback means connected to localhost, no external connection)</li>
--- <li><code>changed       </code>= (boolean) <code>true</code> if <code>oldstate</code> is different on either; <code>name</code>, <code>connected</code>, or <code>ip[1]</code> properties</li></ul>
--- @usage# function test()
---     print ("TEST: entering endless check loop, change connection settings and watch the changes come in...")
---     require ("base")	-- from stdlib to pretty print the table
---     local change, data
---     while true do
---         change, data = copas.checknetwork(data)
---         if change then
---             print (prettytostring(data))
---         end
---     end
--- end
-function copas.checknetwork (oldState)
-	oldState = oldState or {}
-	oldState.alias = oldState.alias or {}
-	oldState.ip = oldState.ip or {}
-	local sysname = socket.dns.gethostname()
-	local newState = {
-				name = sysname or "no name resolved",
-				localhostname = oldState.localhostname or "localhost",
-				localhostip = socket.dns.toip(oldState.localhostname or "localhost") or "127.0.0.1",
-				alias = {},
-				ip = {},
-			}
-	if not sysname then
-		newState.connected = "no"
-	else
-		local sysip, data = socket.dns.toip(sysname)
-		if sysip then
-			newState.ip = data.ip
-			newState.alias = data.alias
-			if newState.ip[1] == newState.localhostip then
-				newState.connected = "loopback"
-			else
-				newState.connected = "yes"
-			end
-		else
-			newState.connected = "no"
-		end
-	end
-	newState.changed = (oldState.name ~= newState.name or oldState.ip[1] ~= newState.ip[1] or newState.connected ~= oldState.connected)
-	return newState.changed, newState
-end
 
--------------------------------------------------------------------------------
--- Creates a timer to repeatedly check the network for changes in its connection state. It basically wraps the <code>checknetwork</code> function.
--- The first check will run when the timer gets armed.
--- @param handler callback function to be called when the network state changes. 2 arguments; <code>newState</code>, <codce>oldState</code>.
--- @param interval optional interval for checking in seconds. If provided the timer will be armed immediately, otherwise it has to be armed afterwards.
--- @param errhandler optional errorhandler to be used for the <code>handler</code> callback function
--- @return timer
-function copas.addcheck(handler, interval, errhandler)
-	assert(type(handler) == "function", "Error, no handler function provided")
-	if interval then
-		assert(type(interval) == "number", "Error in parameter 'interval', expected number, got " .. type(interval))
-		assert(interval > 0, "Error in parameter 'interval', must be greater than 0, got " .. tostring(interval))
-	end
-	local oldState
-	local checker = function()
-			local changed, newState = copas.checknetwork(oldState)
-			if changed then
-				coxpcall(function() handler(newState, oldState) end, errhandler or _missingerrorhandler)
-			end
-			oldState = newState
-		end
-	if interval then
-		return copas.newtimer(checker,checker,nil,true, nil):arm(interval)
-	else
-		return copas.newtimer(checker,checker,nil,true, nil)
-	end
-end
-
-
--- return existing copas table
+-- return existing/modified copas table
 return copas

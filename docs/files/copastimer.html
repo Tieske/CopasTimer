@@ -54,8 +54,14 @@
 <h1>File <code>copastimer.lua</code></h1>
 
 
+<p>Copas Timer is a module that adds a timer capability to the Copas scheduler. It provides the same base functions <code>step</code> and <code>loop</code> as Copas (it actually replaces them) except that it will also check for (and run) timers expiring and run background workers if there is no IO or timer to handle. It also adds an <code>isexiting</code> field that allows for a controlled exit from the loop.<br/>&nbsp<br/>There is a difference between the 2 background mechanisms provided; the timers run on the main loop, should never yield and return quickly, but they are precise. On the other hand the workers run in their own thread (coroutine) and can be yielded if they take too long, but are less precisely timed. <br/><strong>Important:</strong> the workers should never wait for work to come in. They must exit when done. New work should create a new worker. The reason is that while there are worker threads available the luasocket <code>select</code> statement is called with a 0 timeout (non-blocking) to make sure background work is completed asap. If a worker waits for work (call <code>yield()</code> when it has nothing to do) it will create a busy-wait situation.<br/>&nbsp<br/>Copas Timer is free software and uses the same license as Lua.</p>
 
 
+
+<p>Copyright &copy;2011 Thijs Schreijer</p>
+
+
+<p><small><b>Release:</b> Version 0.4, Timer module to extend Copas with a timer and worker capability</small></p>
 
 
 
@@ -63,28 +69,13 @@
 <table class="function_list">
 
 	<tr>
-	<td class="name" nowrap><a href="#<code>t:</code>arm</code>"><code>t:</code>arm</code></a>&nbsp;(self, interval)</td>
-	<td class="summary">Arms a previously created timer </td>
-	</tr>
-
-	<tr>
-	<td class="name" nowrap><a href="#<code>t:</code>cancel</code>"><code>t:</code>cancel</code></a>&nbsp;(self)</td>
-	<td class="summary">Cancels a previously armed timer </td>
-	</tr>
-
-	<tr>
-	<td class="name" nowrap><a href="#copas.addcheck">copas.addcheck</a>&nbsp;(handler, interval, errhandler)</td>
-	<td class="summary">Creates a timer to repeatedly check the network for changes in its connection state.</td>
+	<td class="name" nowrap><a href="#copas.addworker">copas.addworker</a>&nbsp;(func, args, errhandler)</td>
+	<td class="summary">Adds a worker thread.</td>
 	</tr>
 
 	<tr>
 	<td class="name" nowrap><a href="#copas.cancelall">copas.cancelall</a>&nbsp;()</td>
 	<td class="summary">Cancels all currently armed timers.</td>
-	</tr>
-
-	<tr>
-	<td class="name" nowrap><a href="#copas.checknetwork">copas.checknetwork</a>&nbsp;(oldState)</td>
-	<td class="summary">Checks the network connection of the system and detects changes in connection or IP adress.</td>
 	</tr>
 
 	<tr>
@@ -99,7 +90,7 @@
 
 	<tr>
 	<td class="name" nowrap><a href="#copas.loop">copas.loop</a>&nbsp;(timeout, precision)</td>
-	<td class="summary">Executes an endless loop handling Copas steps and timers.</td>
+	<td class="summary">Executes an endless loop handling Copas steps and timers  (it replaces the original <code>copas.loop()</code>).</td>
 	</tr>
 
 	<tr>
@@ -108,8 +99,23 @@
 	</tr>
 
 	<tr>
+	<td class="name" nowrap><a href="#copas.removeworker">copas.removeworker</a>&nbsp;(t)</td>
+	<td class="summary">Removes a worker thread </td>
+	</tr>
+
+	<tr>
 	<td class="name" nowrap><a href="#copas.step">copas.step</a>&nbsp;(timeout, precision)</td>
-	<td class="summary">Executes a single Copas step followed by the execution of the first expired (if any) timer in the timers list.</td>
+	<td class="summary">Executes a single Copas step followed by the execution of the first expired (if any) timer in the timers list (it replaces the original <code>copas.step()</code>) if there is no timer that expires then it will try to execute a worker step if available.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#t:arm">t:arm</a>&nbsp;(self, interval)</td>
+	<td class="summary">Arms a previously created timer </td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#t:cancel">t:cancel</a>&nbsp;(self)</td>
+	<td class="summary">Cancels a previously armed timer </td>
 	</tr>
 
 </table>
@@ -130,86 +136,24 @@
 
 
 
-<dt><a name="<code>t:</code>arm</code>"></a><strong><code>t:</code>arm</code></strong>&nbsp;(self, interval)</dt>
+<dt><a name="copas.addworker"></a><strong>copas.addworker</strong>&nbsp;(func, args, errhandler)</dt>
 <dd>
-Arms a previously created timer
+Adds a worker thread. The threads will be executed when there is no IO nor any expiring timer to run. The <code>args</code> key of the returned table can be modified while the thread is still scheduled. After the <code>args</code> have been passed to <code>resume</code> the <code>args</code> will be set to <code>nil</code>. If <code>args</code> is set again, then the next time the thread is up to run, the new set of <code>args</code> will be passed on to the thread. This enables feeding the thread with data.
 
 
 <h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  <code><em>self</em></code>: 
+	  <code><em>func</em></code>: function to execute in the coroutine
 	</li>
 	
 	<li>
-	  <code><em>interval</em></code>: the interval after which the timer expires (in seconds)
-	</li>
-	
-</ul>
-
-
-
-
-<h3>Usage:</h3>
-<ul><pre class=example>-- Create a new timer<br/>local t = copas.newtimer(nil, function () print("hello world") end, nil, false)<br/>t:arm(5)              -- arm it at 5 seconds<br/>t:cancel()            -- cancel it again</pre></ul>
-
-
-
-
-
-</dd>
-
-
-
-
-<dt><a name="<code>t:</code>cancel</code>"></a><strong><code>t:</code>cancel</code></strong>&nbsp;(self)</dt>
-<dd>
-Cancels a previously armed timer
-
-
-<h3>Parameters:</h3>
-<ul>
-	
-	<li>
-	  <code><em>self</em></code>: 
-	</li>
-	
-</ul>
-
-
-
-
-<h3>Usage:</h3>
-<ul><pre class=example>-- Create a new timer<br/>local t = copas.newtimer(nil, function () print("hello world") end, nil, false)<br/>t:arm(5)              -- arm it at 5 seconds<br/>t:cancel()            -- cancel it again</pre></ul>
-
-
-
-
-
-</dd>
-
-
-
-
-<dt><a name="copas.addcheck"></a><strong>copas.addcheck</strong>&nbsp;(handler, interval, errhandler)</dt>
-<dd>
-Creates a timer to repeatedly check the network for changes in its connection state. It basically wraps the <code>checknetwork</code> function. The first check will run when the timer gets armed.
-
-
-<h3>Parameters:</h3>
-<ul>
-	
-	<li>
-	  <code><em>handler</em></code>: callback function to be called when the network state changes. 2 arguments; <code>newState</code>, <codce>oldState</code>.
+	  <code><em>args</em></code>: table with arguments for the function
 	</li>
 	
 	<li>
-	  <code><em>interval</em></code>: optional interval for checking in seconds. If provided the timer will be armed immediately, otherwise it has to be armed afterwards.
-	</li>
-	
-	<li>
-	  <code><em>errhandler</em></code>: optional errorhandler to be used for the <code>handler</code> callback function
+	  <code><em>errhandler</em></code>: function to handle any errors returned
 	</li>
 	
 </ul>
@@ -220,9 +164,19 @@ Creates a timer to repeatedly check the network for changes in its connection st
 
 
 <h3>Return value:</h3>
-<ul>timer</ul>
+<ul>table with keys <code>thread, args, errhandler</code></ul>
 
 
+
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/copastimer.html#copas.removeworkercopas.removeworker"> -->
+	<li><a href="#copas.removeworker">
+		copas.removeworker</li>
+	</a>
+	
+</ul>
 
 </dd>
 
@@ -246,47 +200,9 @@ Cancels all currently armed timers. Call this method after exiting the loop, to 
 
 
 
-<dt><a name="copas.checknetwork"></a><strong>copas.checknetwork</strong>&nbsp;(oldState)</dt>
-<dd>
-Checks the network connection of the system and detects changes in connection or IP adress. Call repeatedly to check status for changes. With every call include the previous results to compare with.
-
-
-<h3>Parameters:</h3>
-<ul>
-	
-	<li>
-	  <code><em>oldState</em></code>: (table) previous result to compare with, or <code>nil</code> if not called before
-	</li>
-	
-</ul>
-
-
-
-
-<h3>Usage:</h3>
-<ul><pre class=example>function test()<br/>&nbsp&nbsp&nbsp&nbspprint ("TEST: entering endless check loop, change connection settings and watch the changes come in...")<br/>&nbsp&nbsp&nbsp&nbsprequire ("base")	-- from stdlib to pretty print the table<br/>&nbsp&nbsp&nbsp&nbsplocal change, data<br/>&nbsp&nbsp&nbsp&nbspwhile true do<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspchange, data = copas.checknetwork(data)<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspif change then<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspprint (prettytostring(data))<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspend<br/>&nbsp&nbsp&nbsp&nbspend<br/>end</pre></ul>
-
-
-
-<h3>Return values:</h3>
-<ol>
-	
-	<li>changed (boolean) same as <code>newstate.changed</code> (see below).</li>
-	
-	<li>newState (table) same as regular info from <code>socket.dns</code> calls, but extended with; <ul><li><code>localhostname </code>= (string) name of localhost (only field that can be set, defaults to <code>'localhost'</code>)</li> <li><code>localhostip   </code>= (string) ip address resolved for <code>localhostname</code></li> <li><code>connected     </code>= (string) either <code>'yes'</code>, <code>'no'</code>, or <code>'loopback'</code> (loopback means connected to localhost, no external connection)</li> <li><code>changed       </code>= (boolean) <code>true</code> if <code>oldstate</code> is different on either; <code>name</code>, <code>connected</code>, or <code>ip[1]</code> properties</li></ul></li>
-	
-</ol>
-
-
-
-</dd>
-
-
-
-
 <dt><a name="copas.delayedexecutioner"></a><strong>copas.delayedexecutioner</strong>&nbsp;(delay, func, ...)</dt>
 <dd>
-Calls a function delayed, after the specified amount of time. An example use is a call that requires communications to be running already, but if you start the Copas loop, it basically blocks; classic chicken-egg. In this case use the <code>delayedexecutioner</code> to call the method in 0.5 seconds, just before starting the CopasTimer loop. Now when the method actually executes, communications will be online already.
+Calls a function delayed, after the specified amount of time. An example use is a call that requires communications to be running already, but if you start the Copas loop, it basically blocks; classic chicken-egg. In this case use the <code>delayedexecutioner</code> to call the method in 0.5 seconds, just before starting the CopasTimer loop. Now when the method actually executes, communications will be online already. The internals use a timer, so it is executed on the main loop and should not be suspended by calling <code>yield()</code>.
 
 
 <h3>Parameters:</h3>
@@ -313,6 +229,16 @@ Calls a function delayed, after the specified amount of time. An example use is 
 
 
 
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/copastimer.html#copas.newtimercopas.newtimer"> -->
+	<li><a href="#copas.newtimer">
+		copas.newtimer</li>
+	</a>
+	
+</ul>
+
 </dd>
 
 
@@ -333,6 +259,16 @@ Indicator of the loop running or exiting (it is a field, not a function!). Possi
 
 
 
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/copastimer.html#copas.loopcopas.loop"> -->
+	<li><a href="#copas.loop">
+		copas.loop</li>
+	</a>
+	
+</ul>
+
 </dd>
 
 
@@ -340,14 +276,14 @@ Indicator of the loop running or exiting (it is a field, not a function!). Possi
 
 <dt><a name="copas.loop"></a><strong>copas.loop</strong>&nbsp;(timeout, precision)</dt>
 <dd>
-Executes an endless loop handling Copas steps and timers. The loop can be terminated by setting <code>isexiting</code> to true. When exiting the loop, consider call <code>cancelall()</code> to make sure all armed timers get properly cancelled and their <code>cancel</code> callbacks get called properly.
+Executes an endless loop handling Copas steps and timers  (it replaces the original <code>copas.loop()</code>). The loop can be terminated by setting <code>isexiting</code> to true. When exiting the loop, consider call <code>cancelall()</code> to make sure all armed timers get properly cancelled and their <code>cancel</code> callbacks get called properly.
 
 
 <h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  <code><em>timeout</em></code>: time out (in seconds) to be used. The timer list will be checked at least every <code>timeout</code> period for expired timers. The actual interval will be between <code>0.001</code> and <code>timeout</code> based on the next timers expire time. If not provided, it defaults to 5 seconds.
+	  <code><em>timeout</em></code>: time out (in seconds) to be used. The timer list will be checked at least every <code>timeout</code> period for expired timers. The actual interval will be between <code>0</code> and <code>timeout</code> based on the next timers expire time or worker threads being available. If not provided, it defaults to 5 seconds.
 	</li>
 	
 	<li>
@@ -363,6 +299,21 @@ Executes an endless loop handling Copas steps and timers. The loop can be termin
 
 
 
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/copastimer.html#copas.stepcopas.step"> -->
+	<li><a href="#copas.step">
+		copas.step</li>
+	</a>
+	
+	<!-- <li><a href="#../files/copastimer.html#copas.isexitingcopas.isexiting"> -->
+	<li><a href="#copas.isexiting">
+		copas.isexiting</li>
+	</a>
+	
+</ul>
+
 </dd>
 
 
@@ -370,7 +321,7 @@ Executes an endless loop handling Copas steps and timers. The loop can be termin
 
 <dt><a name="copas.newtimer"></a><strong>copas.newtimer</strong>&nbsp;(f_arm, f_expire, f_cancel, recurring, f_error)</dt>
 <dd>
-Creates a new timer. After creating call the <code>arm</code> method of the new timer to actually schedule it.
+Creates a new timer. After creating call the <code>arm</code> method of the new timer to actually schedule it. REMARK: the background workers run in their own thread (coroutine) and hence need to <code>yield</code> when their operation takes to long, but the timers run on the main loop, and hence the callbacks should never <code>yield()</code>, in those cases consider adding a worker through <code>copas.addworker()</code> from the timer callback.
 
 
 <h3>Parameters:</h3>
@@ -408,6 +359,65 @@ Creates a new timer. After creating call the <code>arm</code> method of the new 
 
 
 
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/copastimer.html#t:armt:arm"> -->
+	<li><a href="#t:arm">
+		t:arm</li>
+	</a>
+	
+	<!-- <li><a href="#../files/copastimer.html#t:cancelt:cancel"> -->
+	<li><a href="#t:cancel">
+		t:cancel</li>
+	</a>
+	
+	<!-- <li><a href="#../files/copastimer.html#copas.cancelallcopas.cancelall"> -->
+	<li><a href="#copas.cancelall">
+		copas.cancelall</li>
+	</a>
+	
+</ul>
+
+</dd>
+
+
+
+
+<dt><a name="copas.removeworker"></a><strong>copas.removeworker</strong>&nbsp;(t)</dt>
+<dd>
+Removes a worker thread
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>t</em></code>: thread table (as returned by <code>copas.addworker()</code>), or actual thread to be removed.
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+<ul><code>true</code> if success or <code>false</code> if it wasn't found</ul>
+
+
+
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/copastimer.html#copas.addworkercopas.addworker"> -->
+	<li><a href="#copas.addworker">
+		copas.addworker</li>
+	</a>
+	
+</ul>
+
 </dd>
 
 
@@ -415,7 +425,7 @@ Creates a new timer. After creating call the <code>arm</code> method of the new 
 
 <dt><a name="copas.step"></a><strong>copas.step</strong>&nbsp;(timeout, precision)</dt>
 <dd>
-Executes a single Copas step followed by the execution of the first expired (if any) timer in the timers list.
+Executes a single Copas step followed by the execution of the first expired (if any) timer in the timers list (it replaces the original <code>copas.step()</code>) if there is no timer that expires then it will try to execute a worker step if available.
 
 
 <h3>Parameters:</h3>
@@ -437,9 +447,114 @@ Executes a single Copas step followed by the execution of the first expired (if 
 
 
 <h3>Return value:</h3>
-<ul>time in seconds until the next timer in the list expires, or <code>nil</code> if there is none</ul>
+<ul>time in seconds until the next timer in the list expires, or <code>nil</code> if there is none.</ul>
 
 
+
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/copastimer.html#copas.loopcopas.loop"> -->
+	<li><a href="#copas.loop">
+		copas.loop</li>
+	</a>
+	
+</ul>
+
+</dd>
+
+
+
+
+<dt><a name="t:arm"></a><strong>t:arm</strong>&nbsp;(self, interval)</dt>
+<dd>
+Arms a previously created timer
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>self</em></code>: 
+	</li>
+	
+	<li>
+	  <code><em>interval</em></code>: the interval after which the timer expires (in seconds)
+	</li>
+	
+</ul>
+
+
+
+
+<h3>Usage:</h3>
+<ul><pre class=example>-- Create a new timer<br/>local t = copas.newtimer(nil, function () print("hello world") end, nil, false)<br/>t:arm(5)              -- arm it at 5 seconds<br/>t:cancel()            -- cancel it again</pre></ul>
+
+
+
+<h3>Return value:</h3>
+<ul>the timer <code>t</code></ul>
+
+
+
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/copastimer.html#t:cancelt:cancel"> -->
+	<li><a href="#t:cancel">
+		t:cancel</li>
+	</a>
+	
+	<!-- <li><a href="#../files/copastimer.html#copas.newtimercopas.newtimer"> -->
+	<li><a href="#copas.newtimer">
+		copas.newtimer</li>
+	</a>
+	
+</ul>
+
+</dd>
+
+
+
+
+<dt><a name="t:cancel"></a><strong>t:cancel</strong>&nbsp;(self)</dt>
+<dd>
+Cancels a previously armed timer
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>self</em></code>: 
+	</li>
+	
+</ul>
+
+
+
+
+<h3>Usage:</h3>
+<ul><pre class=example>-- Create a new timer<br/>local t = copas.newtimer(nil, function () print("hello world") end, nil, false)<br/>t:arm(5)              -- arm it at 5 seconds<br/>t:cancel()            -- cancel it again</pre></ul>
+
+
+
+
+
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/copastimer.html#t:armt:arm"> -->
+	<li><a href="#t:arm">
+		t:arm</li>
+	</a>
+	
+	<!-- <li><a href="#../files/copastimer.html#copas.newtimercopas.newtimer"> -->
+	<li><a href="#copas.newtimer">
+		copas.newtimer</li>
+	</a>
+	
+</ul>
 
 </dd>
 
