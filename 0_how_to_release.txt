@@ -1,0 +1,10 @@
+Instructions for setting up a new release;
+
+1) Update 'copastimer.lua' with the new version number
+2) Generate documentation (use pack_and_generate_docs.bat)
+3) Update rockspec file with new version number (in file as well as the filename itself)
+4) create tar file and MD5 checksum (use create_tar.bat)
+5) rename tar file and MD5 file with the version number in the filename.
+6) Update rockspec file again, only updating the new MD5 value this time
+7) upload tar file
+8) upload rockspec

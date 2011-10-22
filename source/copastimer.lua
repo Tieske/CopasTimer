@@ -5,6 +5,10 @@
 -- run) timers expiring and run background workers if there is no IO or timer to
 -- handle. It also adds an <code>isexiting</code> field that allows for a
 -- controlled exit from the loop.<br/>
+-- <br/>To use the module, make sure to 'require' copastimer before any other
+-- code 'requires' copas. This will make sure that the copas version in use will
+-- updated before any other code uses it. The changes should be transparent to
+-- your existing code.<br/>
 -- <br/>There is a difference between the 2 background mechanisms provided; the
 -- timers run on the main loop, should never yield and return quickly, but they
 -- are precise. On the other hand the workers run in their own thread (coroutine)
@@ -15,9 +19,9 @@
 -- with a 0 timeout (non-blocking) to make sure background work is completed asap.
 -- If a worker waits for work (call <code>yield()</code> when it has nothing to do)
 -- it will create a busy-wait situation.<br/>
--- <br/>Copas Timer is free software and uses the same license as Lua.
+-- <br/>Copas Timer is free software under the MIT/X11 license.
 -- @copyright 2011 Thijs Schreijer
--- @release Version 0.4, Timer module to extend Copas with a timer and worker capability
+-- @release Version 0.4.0, Timer module to extend Copas with a timer and worker capability
 
 local copas = require("copas")
 local socket = require("socket")
