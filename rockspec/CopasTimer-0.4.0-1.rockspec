@@ -1,16 +1,16 @@
 package = "CopasTimer"
 version = "0.4.0-1"
 source = {
-   url = "http://www.thijsschreijer.nl/downloads/lua/copastimer-0.4.0-1.tar.gz",
+   url = "https://github.com/downloads/Tieske/CopasTimer/copastimer-0.4.0-1.tar.gz",
 }
 description = {
    summary = "Copas add-on to provide timers and background tasks",
    detailed = [[
-      Copas Timer is a module that adds a timer capability to the 
-      Copas scheduler. It provides the same base functions step and 
+      Copas Timer is a module that adds a timer capability to the
+      Copas scheduler. It provides the same base functions step and
       loop as Copas (it actually replaces them) except that it will
-      also check for (and run) timers expiring and run background 
-      workers if there is no IO or timer to handle. It also adds an 
+      also check for (and run) timers expiring and run background
+      workers if there is no IO or timer to handle. It also adds an
       isexiting field that allows for a controlled exit from the
       loop.
    ]],
@@ -22,5 +22,5 @@ dependencies = {
 }
 build = {
    type = "builtin",
-   modules = { copastimer = "source/copastimer.lua" } 
+   modules = { copastimer = "source/copastimer.lua" }
 }
