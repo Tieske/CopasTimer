@@ -1,16 +1,23 @@
 @echo off
 cls
+rem ===============================================================
+rem   Update the lines below with newest version information
+rem   and files/directories to be included
+rem ===============================================================
 set my_version=0.4.0
 set my_rsrev=1
-set my_filelist=docs source test rockspec
 set my_name=copastimer
 set my_dir=distr
+set my_filelist=docs source test rockspec
+rem ===============================================================
 
 echo Creating distribution files;
 echo ==============================================================
 echo Creating application: %my_name%
 echo Using version       : %my_version%
 echo Rockspec revision   : %my_rsrev%
+echo.
+echo If this is not correct, stop and update the initial lines of this batchfile
 echo.
 echo.
 pause
@@ -26,6 +33,7 @@ del %my_fullversion%.tar.gz
 del %my_fullversion%.tar.gz.md5.txt
 
 rem pack files in named tar
+md %my_dir%
 "c:\program files\unxutils\tar" -c %my_filelist% > %my_target%.tar
 
 rem create dir with version and unpack there, remove intermediate file
@@ -50,7 +58,7 @@ rem create an MD5 checksum
 
 echo.
 echo.
-echo Created archive     : %my_fullversion%
+echo Created archive     : %my_fullversion%.tar.gz
 echo.
 
 pause

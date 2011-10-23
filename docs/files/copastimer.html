@@ -447,7 +447,7 @@ Executes a single Copas step followed by the execution of the first expired (if 
 
 
 <h3>Return value:</h3>
-<ul>time in seconds until the next timer in the list expires, or <code>nil</code> if there is none.</ul>
+<ul>time in seconds until the next timer in the list expires, 0 if there is a worker waiting for execution, or <code>nil</code> if there is no timer nor any worker.</ul>
 
 
 

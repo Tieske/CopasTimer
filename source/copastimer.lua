@@ -329,8 +329,8 @@ end
 -- if there is no timer that expires then it will try to execute a worker step if available.
 -- @param timeout timeout value (in seconds) to pass to the Copas step handler
 -- @param precision see parameter <code>precision</code> at function <code>loop()</code>.
--- @return time in seconds until the next timer in the list expires, or
--- <code>nil</code> if there is none.
+-- @return time in seconds until the next timer in the list expires, 0 if there is a worker
+-- waiting for execution, or <code>nil</code> if there is no timer nor any worker.
 -- @see copas.loop
 copas.step = function (timeout, precision)
     copasstep(timeout)  -- call original copas step function
