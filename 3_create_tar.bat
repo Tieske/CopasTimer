@@ -4,7 +4,7 @@ rem ===============================================================
 rem   Update the lines below with newest version information
 rem   and files/directories to be included
 rem ===============================================================
-set my_version=0.4.0
+set my_version=0.4.1
 set my_rsrev=1
 set my_name=copastimer
 set my_dir=distr
@@ -44,21 +44,21 @@ del ..\..\%my_target%.tar
 
 rem pack again in tar, now with initial dir including version, delete intermediate directory
 cd ..
-"c:\program files\unxutils\tar" -c %my_name%-%my_version% > ..\%my_fullversion%.tar
+"c:\program files\unxutils\tar" -c %my_name%-%my_version% > ..\%my_fileversion%.tar
 rmdir /S /Q %my_name%-%my_version%
 
 
 rem now compress using gzip and delete intermediate tar file
 cd ..
-"c:\program files\unxutils\gzip" -c %my_fullversion%.tar > %my_fullversion%.tar.gz
-del %my_fullversion%.tar
+"c:\program files\unxutils\gzip" -c %my_fileversion%.tar > %my_fileversion%.tar.gz
+del %my_fileversion%.tar
 
 rem create an MD5 checksum
-"c:\program files\unxutils\md5sum" %my_fullversion%.tar.gz > %my_fullversion%.tar.gz.md5.txt
+"c:\program files\unxutils\md5sum" %my_fileversion%.tar.gz > %my_fileversion%.tar.gz.md5.txt
 
 echo.
 echo.
-echo Created archive     : %my_fullversion%.tar.gz
+echo Created archive     : %my_fileversion%.tar.gz
 echo.
 
 pause

@@ -1,8 +1,7 @@
 package = "CopasTimer"
 version = "0.4.0-1"
 source = {
-   url = "https://github.com/downloads/Tieske/CopasTimer/copastimer-0.4.0-1.tar.gz",
-   dir = "copastimer-0.4.0",
+   url = "https://github.com/downloads/Tieske/CopasTimer/copastimer-0.4.1.tar.gz",
 }
 description = {
    summary = "Copas add-on to provide timers and background tasks",
