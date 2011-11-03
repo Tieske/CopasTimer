@@ -48,7 +48,7 @@ local silly = function()
     lasttime = socket.gettime()
     if cnt == 0 then
         -- exit the loop
-        copas.isexiting = true
+        copas.exitloop(nil,true)
     elseif cnt == 4 then
         -- restart worker1
         w1 = 0
@@ -62,7 +62,7 @@ server = socket.bind(host, port)            -- create a server
 copas.addserver(server, handle)
 
 print("Waiting for some bogus connection... will exit after the count down.")
-copas.newtimer(silly, silly, nil, true, nil):arm(5)  -- silly timer
+copas.newtimer(silly, silly, nil, true, nil):arm(2)  -- silly timer
 
 copas.loop()                          -- enter loop
 print ("bye, bye...")
