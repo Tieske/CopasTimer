@@ -7,6 +7,7 @@ setmetatable(servers, {__mode = "k"})   -- server table weak keys
 local clients = {}
 setmetatable(clients, {__mode = "k"})   -- client table weak keys
 
+-- TODO: remove the 'all' event from the code, just subscribe to all individual events.
 
 -------------------------------------------------------------------------------
 -- Dispatching creates a separate copastimer background worker (thread/coroutine) for each client that has
