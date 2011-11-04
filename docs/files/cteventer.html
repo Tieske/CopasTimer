@@ -1,0 +1,744 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+    <title>Reference</title>
+    <link rel="stylesheet" href="../luadoc.css" type="text/css" />
+	<!--meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/-->
+</head>
+
+<body>
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+<div id="main">
+
+<div id="navigation">
+
+
+<h1>LuaDoc</h1>
+<ul>
+	
+	<li><a href="../index.html">Index</a></li>
+	
+</ul>
+
+
+<!-- Module list -->
+
+
+
+<!-- File list -->
+
+<h1>Files</h1>
+<ul>
+
+	<li>
+		<a href="../files/copastimer.html">copastimer.lua</a>
+	</li>
+
+	<li><strong>cteventer.lua</strong></li>
+	
+</ul>
+
+
+
+
+
+
+</div> <!-- id="navigation" -->
+
+<div id="content">
+
+<h1>File <code>cteventer.lua</code></h1>
+
+
+<p>Dispatching creates a separate copastimer background worker (thread/coroutine) for each client that has to receive the event. The eventer will create a global; <code>copas.eventer</code> for itself. The eventer uses servers and client, the servers should register before firing any events, and the client should subscribe to server events.</p>
+
+
+
+
+
+
+<h2>Functions</h2>
+<table class="function_list">
+
+	<tr>
+	<td class="name" nowrap><a href="#clientsubscribe">clientsubscribe</a>&nbsp;(client, server, handler, event)</td>
+	<td class="summary">subscribes a client to events </td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#clientunsubscribe">clientunsubscribe</a>&nbsp;(client, server, event)</td>
+	<td class="summary">unsubscribes a client from events </td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#decorate">decorate</a>&nbsp;(server, events)</td>
+	<td class="summary">Decorates an object as an event server.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#e:cancel">e:cancel</a>&nbsp;(self)</td>
+	<td class="summary">Removes all event related workers from the copas background worker queue.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#e:event">e:event</a>&nbsp;()</td>
+	<td class="summary">The event string.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#e:finish">e:finish</a>&nbsp;(self, timeout)</td>
+	<td class="summary">Waits for an event to be completed in a blocking mode.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#e:threads">e:threads</a>&nbsp;()</td>
+	<td class="summary">Table with threads (coroutines) created.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#e:waitfor">e:waitfor</a>&nbsp;(self, timeout)</td>
+	<td class="summary">Waits for an event to be completed.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#s:dispatch">s:dispatch</a>&nbsp;(self, event, ...)</td>
+	<td class="summary">Dispatches an event for this server.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#s:events">s:events</a>&nbsp;()</td>
+	<td class="summary">Table (as a set) with the event strings for this server.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#s:subscribe">s:subscribe</a>&nbsp;(self, client, handler, event)</td>
+	<td class="summary">Subscribes a client to the events of this server.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#s:unsubscribe">s:unsubscribe</a>&nbsp;(self, client, event)</td>
+	<td class="summary">Unsubscribes a client from the events of this server.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#serverdispatch">serverdispatch</a>&nbsp;(server, event, ...)</td>
+	<td class="summary">dispatches an event from a server </td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#serverregister">serverregister</a>&nbsp;(server, eventlist)</td>
+	<td class="summary">registers a server that will fire events </td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#serverunregister">serverunregister</a>&nbsp;(server)</td>
+	<td class="summary">unregisters a server that will fire events </td>
+	</tr>
+
+</table>
+
+
+
+
+
+
+<br/>
+<br/>
+
+
+
+
+<h2><a name="functions"></a>Functions</h2>
+<dl class="function">
+
+
+
+<dt><a name="clientsubscribe"></a><strong>clientsubscribe</strong>&nbsp;(client, server, handler, event)</dt>
+<dd>
+subscribes a client to events
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>client</em></code>: unique client parameter (self)
+	</li>
+	
+	<li>
+	  <code><em>server</em></code>: a unique key to identify the specific server
+	</li>
+	
+	<li>
+	  <code><em>handler</em></code>: event handler function to be called. It will be called with signature <code>handler(client, server, event, [additional event parameters...])</code> or in method notation; <code>client:handler(server, event, [additional event parameters...])</code>.
+	</li>
+	
+	<li>
+	  <code><em>event</em></code>: string, <code>nil</code> to subscribe to all events
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="clientunsubscribe"></a><strong>clientunsubscribe</strong>&nbsp;(client, server, event)</dt>
+<dd>
+unsubscribes a client from events
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>client</em></code>: unique client parameter (self)
+	</li>
+	
+	<li>
+	  <code><em>server</em></code>: a unique key to identify the specific server, nil to unsubscribe all
+	</li>
+	
+	<li>
+	  <code><em>event</em></code>: string, <code>nil</code> to unsubscribe from all events
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="decorate"></a><strong>decorate</strong>&nbsp;(server, events)</dt>
+<dd>
+Decorates an object as an event server. It will provide the object with the following methods/tables; <ul> <li><code>s:subscribe(client, handler, event)</code></li> <li><code>s:unsubscribe(client, event)</code></li> <li><code>s:dispatch(event, ...)</code></li> <li><code>s.events</code></li> </ul>the methods are shortcuts to the <code>eventer</code> methods <code>clientsubscribe, clientunsubscribe, serverdispatch</code>.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>server</em></code>: The event server object that will be decorated with the methods and tables listed above.
+	</li>
+	
+	<li>
+	  <code><em>events</em></code>: A list of event strings. This list will be copied to a new table (as a set) and stored in <code>server.events</code>
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/cteventer.html#clientsubscribeclientsubscribe"> -->
+	<li><a href="#clientsubscribe">
+		clientsubscribe</li>
+	</a>
+	
+	<!-- <li><a href="#../files/cteventer.html#clientunsubscribeclientunsubscribe"> -->
+	<li><a href="#clientunsubscribe">
+		clientunsubscribe</li>
+	</a>
+	
+	<!-- <li><a href="#../files/cteventer.html#serverdispatchserverdispatch"> -->
+	<li><a href="#serverdispatch">
+		serverdispatch</li>
+	</a>
+	
+</ul>
+
+</dd>
+
+
+
+
+<dt><a name="e:cancel"></a><strong>e:cancel</strong>&nbsp;(self)</dt>
+<dd>
+Removes all event related workers from the copas background worker queue. Threads will remain in the event object itself, but will no longer be executed as background workers.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>self</em></code>: 
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="e:event"></a><strong>e:event</strong>&nbsp;()</dt>
+<dd>
+The event string. (this is a field, not a function)
+
+
+
+
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="e:finish"></a><strong>e:finish</strong>&nbsp;(self, timeout)</dt>
+<dd>
+Waits for an event to be completed in a blocking mode. That is; all event threads spawned have died (this does not include additional threads spawned from them). Current thread will NOT yield while waiting, it will only process the event related threads. It is blocking, so timers, sockets and workers will not run in the mean time, so executing this method may take a long time!
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>self</em></code>: 
+	</li>
+	
+	<li>
+	  <code><em>timeout</em></code>: timeout (in seconds), use <code>nil</code> for no timeout
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+<ul><code>true</code> when completed, or <code>nil, "timeout"</code> in case of a timeout.</ul>
+
+
+
+</dd>
+
+
+
+
+<dt><a name="e:threads"></a><strong>e:threads</strong>&nbsp;()</dt>
+<dd>
+Table with threads (coroutines) created. One for each event handler dispatched.
+
+
+
+
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="e:waitfor"></a><strong>e:waitfor</strong>&nbsp;(self, timeout)</dt>
+<dd>
+Waits for an event to be completed. That is; all event threads spawned have died, this does not include additional threads spawned from them. Current thread will yield while waiting (so cannot be used from the mainthread!).
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>self</em></code>: 
+	</li>
+	
+	<li>
+	  <code><em>timeout</em></code>: timeout (in seconds), use <code>nil</code> for no timeout
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+<ul><code>true</code> when completed, or <code>nil, "timeout"</code> in case of a timeout.</ul>
+
+
+
+</dd>
+
+
+
+
+<dt><a name="s:dispatch"></a><strong>s:dispatch</strong>&nbsp;(self, event, ...)</dt>
+<dd>
+Dispatches an event for this server. It functions as a shortcut to <code>serverdispatch()</code>.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>self</em></code>: 
+	</li>
+	
+	<li>
+	  <code><em>event</em></code>: event string of the event to dispatch
+	</li>
+	
+	<li>
+	  <code><em>...</em></code>: any additional event parameters
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/cteventer.html#s:eventss:events"> -->
+	<li><a href="#s:events">
+		s:events</li>
+	</a>
+	
+	<!-- <li><a href="#../files/cteventer.html#decoratedecorate"> -->
+	<li><a href="#decorate">
+		decorate</li>
+	</a>
+	
+	<!-- <li><a href="#../files/cteventer.html#serverdispatchserverdispatch"> -->
+	<li><a href="#serverdispatch">
+		serverdispatch</li>
+	</a>
+	
+</ul>
+
+</dd>
+
+
+
+
+<dt><a name="s:events"></a><strong>s:events</strong>&nbsp;()</dt>
+<dd>
+Table (as a set) with the event strings for this server.
+
+
+
+
+
+
+
+
+
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/cteventer.html#decoratedecorate"> -->
+	<li><a href="#decorate">
+		decorate</li>
+	</a>
+	
+</ul>
+
+</dd>
+
+
+
+
+<dt><a name="s:subscribe"></a><strong>s:subscribe</strong>&nbsp;(self, client, handler, event)</dt>
+<dd>
+Subscribes a client to the events of this server. It functions as a shortcut to <code>clientsubscribe()</code>.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>self</em></code>: 
+	</li>
+	
+	<li>
+	  <code><em>client</em></code>: the client identifier (usually the client object table)
+	</li>
+	
+	<li>
+	  <code><em>handler</em></code>: the handler function for the event
+	</li>
+	
+	<li>
+	  <code><em>event</em></code>: the event to subscribe to or <code>nil</code> to subscribe to all events
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/cteventer.html#s:eventss:events"> -->
+	<li><a href="#s:events">
+		s:events</li>
+	</a>
+	
+	<!-- <li><a href="#../files/cteventer.html#decoratedecorate"> -->
+	<li><a href="#decorate">
+		decorate</li>
+	</a>
+	
+	<!-- <li><a href="#../files/cteventer.html#clientsubscribeclientsubscribe"> -->
+	<li><a href="#clientsubscribe">
+		clientsubscribe</li>
+	</a>
+	
+</ul>
+
+</dd>
+
+
+
+
+<dt><a name="s:unsubscribe"></a><strong>s:unsubscribe</strong>&nbsp;(self, client, event)</dt>
+<dd>
+Unsubscribes a client from the events of this server. It functions as a shortcut to <code>clientunsubscribe()</code>.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>self</em></code>: 
+	</li>
+	
+	<li>
+	  <code><em>client</em></code>: the client identifier (usually the client object table), must be the same as used while subscribing.
+	</li>
+	
+	<li>
+	  <code><em>event</em></code>: the event to unsubscribe from or <code>nil</code> to unsubscribe from all events
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/cteventer.html#s:eventss:events"> -->
+	<li><a href="#s:events">
+		s:events</li>
+	</a>
+	
+	<!-- <li><a href="#../files/cteventer.html#decoratedecorate"> -->
+	<li><a href="#decorate">
+		decorate</li>
+	</a>
+	
+	<!-- <li><a href="#../files/cteventer.html#clientunsubscribeclientunsubscribe"> -->
+	<li><a href="#clientunsubscribe">
+		clientunsubscribe</li>
+	</a>
+	
+</ul>
+
+</dd>
+
+
+
+
+<dt><a name="serverdispatch"></a><strong>serverdispatch</strong>&nbsp;(server, event, ...)</dt>
+<dd>
+dispatches an event from a server
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>server</em></code>: a unique key to identify the specific server
+	</li>
+	
+	<li>
+	  <code><em>event</em></code>: string
+	</li>
+	
+	<li>
+	  <code><em>...</em></code>: other arguments to be passed on as arguments to the eventhandler
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+<ul>eventobject, see the 'see' section below.</ul>
+
+
+
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/cteventer.html#e:evente:event"> -->
+	<li><a href="#e:event">
+		e:event</li>
+	</a>
+	
+	<!-- <li><a href="#../files/cteventer.html#e:threadse:threads"> -->
+	<li><a href="#e:threads">
+		e:threads</li>
+	</a>
+	
+	<!-- <li><a href="#../files/cteventer.html#e:cancele:cancel"> -->
+	<li><a href="#e:cancel">
+		e:cancel</li>
+	</a>
+	
+	<!-- <li><a href="#../files/cteventer.html#e:waitfore:waitfor"> -->
+	<li><a href="#e:waitfor">
+		e:waitfor</li>
+	</a>
+	
+	<!-- <li><a href="#../files/cteventer.html#e:finishe:finish"> -->
+	<li><a href="#e:finish">
+		e:finish</li>
+	</a>
+	
+</ul>
+
+</dd>
+
+
+
+
+<dt><a name="serverregister"></a><strong>serverregister</strong>&nbsp;(server, eventlist)</dt>
+<dd>
+registers a server that will fire events
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>server</em></code>: a unique key to identify the specific server, can be a string or table, or whatever, as long as it is unique
+	</li>
+	
+	<li>
+	  <code><em>eventlist</em></code>: list of strings with event names (table keys are unused, only values, so may also be a set)
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="serverunregister"></a><strong>serverunregister</strong>&nbsp;(server)</dt>
+<dd>
+unregisters a server that will fire events
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>server</em></code>: a unique key to identify the specific server, can be a string or table, or whatever, as long as it is unique
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+</dd>
+
+
+</dl>
+
+
+
+
+
+
+
+</div> <!-- id="content" -->
+
+</div> <!-- id="main" -->
+
+<div id="about">
+	<p><a href="http://validator.w3.org/check?uri=referer"><img src="http://www.w3.org/Icons/valid-xhtml10" alt="Valid XHTML 1.0!" height="31" width="88" /></a></p>
+</div> <!-- id="about" -->
+
+</div> <!-- id="container" -->	
+</body>
+</html>

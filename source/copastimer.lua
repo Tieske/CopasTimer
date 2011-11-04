@@ -7,12 +7,15 @@
 -- controlled exit from the loop.<br/>
 -- <br/>To use the module, make sure to 'require' copastimer before any other
 -- code 'requires' copas. This will make sure that the copas version in use will
--- updated before any other code uses it. The changes should be transparent to
+-- be updated before any other code uses it. The changes should be transparent to
 -- your existing code.<br/>
 -- <br/>There is a difference between the 2 background mechanisms provided; the
--- timers run on the main loop, should never yield and return quickly, but they
+-- timers run on the main loop, they should never yield and return quickly, but they
 -- are precise. On the other hand the workers run in their own thread (coroutine)
--- and can be yielded if they take too long, but are less precisely timed.
+-- and can be yielded if they take too long, but are less precisely timed.<br/>
+-- <br/>The workers are dispatched from a rotating queue, so when a worker is up to run
+-- is will be removed from the queue, resumed, and (if not finished) added at the end
+-- of the queue again.
 -- <br/><strong>Important:</strong> the workers should never wait for work to come in. They must
 -- exit when done. New work should create a new worker. The reason is that while
 -- there are worker threads available the luasocket <code>select</code> statement is called
@@ -105,7 +108,7 @@ local pushthread = function(t)
 end
 
 -------------------------------------------------------------------------------
--- Adds a background worker to the end of the thread list
+-- Pops background worker from the thread list
 -- @param t thread table (see copas.addworker()) or actual thread (coroutine)
 -- to remove from the list. If nil then just the one on top will be popped.
 -- @return the popped thread table, or nil if it wasn't found
@@ -123,6 +126,37 @@ local popthread = function(t)
             if v == t or v.thread == t then
                 -- found it, return it
                 return table.remove(workers, i)
+            end
+        end
+        -- wasn't found
+        return nil
+    end
+end
+
+-------------------------------------------------------------------------------
+-- Returns a background worker
+-- @param t thread (coroutine) to get from the list
+-- @return the thread table (as earlier returned by <code>addworker()</code>)
+-- or <code>nil</code> if it wasn't found
+-- @see copas.addworker
+-- @usage# if copas.getworker(coroutine.running()) then
+--     print ("I'm running as a background worker")
+-- else
+--     print ("No background worker found, so I'm on my own")
+-- end
+copas.getworker = function(t)
+    if #workers == 0 then
+        return nil
+    end
+
+    if not t then
+        return nil
+    else
+        -- specific one specified, have to go look for it
+        for i, v in ipairs(workers) do
+            if v == t or v.thread == t then
+                -- found it, return it
+                return v
             end
         end
         -- wasn't found
@@ -160,6 +194,10 @@ end
 -- @param errhandler function to handle any errors returned
 -- @return table with keys <code>thread, args, errhandler</code>
 -- @see copas.removeworker
+-- @usage# copas.addworker(function(...)
+--         local t = {...}
+--         print(table.concat(t, " "))
+--     end, { "Hello", "world" })
 copas.addworker = function(func, args, errhandler)
     local t = {
         thread = coroutine.create(func),
@@ -235,8 +273,7 @@ end
 -- @return <ul>
 -- <li><code>nil</code>: the loop is not running, </li>
 -- <li><code>false</code>: the loop is running, or </li>
--- <li><code>true</code>: the loop is scheduled to stop after
--- the current iteration.</li></ul>
+-- <li><code>true</code>: the loop is scheduled to stop</li></ul>
 -- @usage# if copas.isexiting() ~= nil then
 --     -- loop is currently running, make it exit after the worker queue is empty and cancel any timers
 --     copas.exitloop(nil, true)
@@ -264,7 +301,7 @@ end
 -- <li><code>&lt 0</code>: exit immediately after next loop iteration, do not
 -- wait for workers or the <code>copas.events.loopstopping/loopstopped</code> events</li> to complete
 -- (timers will be cancelled if set to do so)</ul>
--- @param canceltimers (boolean) if <code>true</code> then <code>copas.cancelall()</code>
+-- @param canceltimers (boolean) if <code>true</code> or <code>nil</code> then <code>copas.cancelall()</code>
 -- will be called to properly cancel all running timers.
 -- @see copas.loop
 -- @see copas.isexiting
@@ -374,8 +411,7 @@ end
 
 -------------------------------------------------------------------------------
 -- Cancels all currently armed timers.
--- Call this method after exiting the loop, to make sure all timers are properly
--- cancelled and their cancel callback methods have been executed.
+-- @see copas.exitloop
 copas.cancelall = function()
     for _, t in pairs(timers) do
         t:cancel()
@@ -420,13 +456,10 @@ copas.loop = function (timeout, precision)
     exittimer = nil
     -- do initial event
     if copas.eventer then
-        -- raise event for starting
-        local e = copas:dispatch(copas.events.loopstarting)
-        -- clear event threads just added from the worker queue, so they won't run twice
-        e:cancel()
-        -- execute them now, run threads until complete, no sockets, no timers, no workers, just the event threads
-        e:finish()
-        -- raise event for started, tghis one will be executed on the main loop once it runs
+        -- raise event for starting, execute them now, run threads until complete,
+        -- no sockets, no timers, no workers, just the event threads
+        copas:dispatch(copas.events.loopstarting):finish()
+        -- raise event for started, this one will be executed on the main loop once it starts running
         copas:dispatch(copas.events.loopstarted)
     end
     -- execute single timercheck and get time to next timer expiring
@@ -456,7 +489,7 @@ copas.loop = function (timeout, precision)
             end
             -- Are we done with the exit events and no timer has been set?
             if not next(exiteventthreads.threads) and not exittimer and exittimeout then
-                -- table is empty and we have a timeou that has not yet been set; so set it now.
+                -- table is empty and we have a timeout that has not yet been set; so set it now.
                 startexittimer()
             end
             -- do we still have workers to complete?
@@ -484,12 +517,8 @@ copas.loop = function (timeout, precision)
         -- run the last event
         if copas.eventer then
             -- raise event, add workers table as eventdata to inform about unfinished worker threads
-            local e = copas:dispatch(copas.events.loopstopped, workers)
-            -- clear event threads just added from the worker queue, so the 'workers' table provided
-            -- as eventdata only contains the unfinished workers that will be abandoned
-            e:cancel()
             -- run threads until complete, no sockets, no timers, no workers, just the event threads
-            e:finish()
+            copas:dispatch(copas.events.loopstopped, workers):finish()
         end
     end
     exiting = nil
