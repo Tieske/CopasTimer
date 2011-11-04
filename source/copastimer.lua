@@ -346,7 +346,11 @@ copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
             -- set again if recurring
             if self.recurring then
                 self.when = socket.gettime() + (self.interval or 1)
-                timeradd(self)
+                if not self._hasbeencancelled then
+                    -- if the 'expire' handler cancelled the timer, it failed because
+                    -- while executing it temporarily wasn't in the list
+                    timeradd(self)
+                end
             end
         end,
         -------------------------------------------------------------------------------
@@ -361,6 +365,7 @@ copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
         cancel = function(self)
             -- remove self from timer list
             timerremove(self)
+            self._hasbeencancelled = true   -- in case it is cancelled by the 'expire' handler
             -- run CANCEL handler
             if f_cancel then coxpcall(f_cancel, f_error or _missingerrorhandler) end
         end,
