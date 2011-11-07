@@ -276,7 +276,7 @@ end
 -- <li><code>true</code>: the loop is scheduled to stop</li></ul>
 -- @usage# if copas.isexiting() ~= nil then
 --     -- loop is currently running, make it exit after the worker queue is empty and cancel any timers
---     copas.exitloop(nil, true)
+--     copas.exitloop(nil, false)
 -- end
 -- @see copas.loop
 -- @see copas.exitloop
@@ -301,15 +301,15 @@ end
 -- <li><code>&lt 0</code>: exit immediately after next loop iteration, do not
 -- wait for workers or the <code>copas.events.loopstopping/loopstopped</code> events</li> to complete
 -- (timers will be cancelled if set to do so)</ul>
--- @param canceltimers (boolean) if <code>true</code> or <code>nil</code> then <code>copas.cancelall()</code>
--- will be called to properly cancel all running timers.
+-- @param keeptimers (boolean) if <code>true</code> then the active timers will NOT be cancelled, otherwise
+-- <code>copas.cancelall()</code> will be called to properly cancel all running timers.
 -- @see copas.loop
 -- @see copas.isexiting
-copas.exitloop = function(timeout, canceltimers)
+copas.exitloop = function(timeout, keeptimers)
     if exiting == false then
         exiting = true
         exittimeout = tonumber(timeout)
-        exitcanceltimers = canceltimers or true
+        exitcanceltimers = not keeptimers
         exittimer = nil
         if exittimeout and exittimeout < 0 then
             exitingnow = true

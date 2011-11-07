@@ -88,7 +88,7 @@
 	</tr>
 
 	<tr>
-	<td class="name" nowrap><a href="#copas.exitloop">copas.exitloop</a>&nbsp;(timeout, canceltimers)</td>
+	<td class="name" nowrap><a href="#copas.exitloop">copas.exitloop</a>&nbsp;(timeout, keeptimers)</td>
 	<td class="summary">Instructs Copas to exit the loop.</td>
 	</tr>
 
@@ -271,7 +271,7 @@ Calls a function delayed, after the specified amount of time. An example use is 
 
 
 
-<dt><a name="copas.exitloop"></a><strong>copas.exitloop</strong>&nbsp;(timeout, canceltimers)</dt>
+<dt><a name="copas.exitloop"></a><strong>copas.exitloop</strong>&nbsp;(timeout, keeptimers)</dt>
 <dd>
 Instructs Copas to exit the loop. It will wait for any background workers to complete. If the <code>copas.eventer</code> is used then the timeout will only start after the <code>copas.events.loopstopping</code> event has been completely handled.
 
@@ -284,7 +284,7 @@ Instructs Copas to exit the loop. It will wait for any background workers to com
 	</li>
 	
 	<li>
-	  <code><em>canceltimers</em></code>: (boolean) if <code>true</code> or <code>nil</code> then <code>copas.cancelall()</code> will be called to properly cancel all running timers.
+	  <code><em>keeptimers</em></code>: (boolean) if <code>true</code> then the active timers will NOT be cancelled, otherwise <code>copas.cancelall()</code> will be called to properly cancel all running timers.
 	</li>
 	
 </ul>
@@ -367,7 +367,7 @@ Indicator of the loop running or exiting.
 
 
 <h3>Usage:</h3>
-<ul><pre class=example>if copas.isexiting() ~= nil then<br/>&nbsp&nbsp&nbsp&nbsp-- loop is currently running, make it exit after the worker queue is empty and cancel any timers<br/>&nbsp&nbsp&nbsp&nbspcopas.exitloop(nil, true)<br/>end</pre></ul>
+<ul><pre class=example>if copas.isexiting() ~= nil then<br/>&nbsp&nbsp&nbsp&nbsp-- loop is currently running, make it exit after the worker queue is empty and cancel any timers<br/>&nbsp&nbsp&nbsp&nbspcopas.exitloop(nil, false)<br/>end</pre></ul>
 
 
 
