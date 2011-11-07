@@ -9,14 +9,20 @@ setmetatable(clients, {__mode = "k"})   -- client table weak keys
 
 -- TODO:
 --    * update the module documentation
---    * remove the 'all' event from the code, just subscribe to all individual events.
 --    * create copas directory with timer and eventer located inside
 
 -------------------------------------------------------------------------------
--- Dispatching creates a separate copastimer background worker (thread/coroutine) for each client that has
--- to receive the event. The eventer will create a global; <code>copas.eventer</code>
--- for itself. The eventer uses servers and client, the servers should register
--- before firing any events, and the client should subscribe to server events.
+-- The eventer is an event dispatcher. It works on top of Copas Timer using the
+-- workers to create event threads. The eventer uses a publish/subscribe mechanism with servers and clients.
+-- The servers should register before firing any events, and the clients should
+-- subscribe to server events.<br/>
+-- <br/>Dispatching creates a separate worker
+-- (thread/coroutine) for each client that has to receive the event. This means that separate threads
+-- will have be been scheduled but not executed when an event is dispatched. Execution follows later when
+-- the Copas Timer loop continues to handle its worker queue in the background.
+-- The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for
+-- the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.
+
 
 -------------------------------------------------------------------------------
 -- local function to do the actual dispatching by creating new threads
@@ -224,14 +230,12 @@ copas.eventer = {
         assert(not servers[server],"Server is already registered")
         assert(type(eventlist) == "table", "EventList must be a table with strings")
         -- build event table with listeners
-        local events = {}    -- table with subscribers to SPECIFIC events of server
+        local events = {}    -- table with events of server
         setmetatable(events, {__mode = "k"})   -- event client table weak keys
         for i, v in pairs(eventlist) do
-            events[v] = {}
+            events[v] = {}      -- client list for this event
         end
-        local all = {}    -- table with subscribers to ALL events of server
-        setmetatable(all, {__mode = "k"})   -- event client table weak keys
-        servers[server] = { events = events, all = all}
+        servers[server] = events
         -- raise my own event
         copas.eventer:dispatch(copas.eventer.events.register, server, eventlist)
         return true
@@ -270,12 +274,14 @@ copas.eventer = {
         assert(stable, "Server not found")
         if event then
             -- specific event
-            local etable = stable.events[event]
+            local etable = stable[event]
             assert(etable, "Event not found for this server")
             etable[client] = handler
         else
             -- all events
-            stable.all[client] = handler
+            for _, etable in pairs (stable) do
+                etable[client] = handler
+            end
         end
         if not clients[client] then
             local s = {}
@@ -291,7 +297,7 @@ copas.eventer = {
     -------------------------------------------------------------------------------
     -- unsubscribes a client from events
     -- @param client unique client parameter (self)
-    -- @param server a unique key to identify the specific server, nil to unsubscribe all
+    -- @param server a unique key to identify the specific server, <nil>nil</nil> to unsubscribe all
     -- @param event string, <code>nil</code> to unsubscribe from all events
     clientunsubscribe = function(client, server, event)
         assert(client, "Client parameter cannot be nil")
@@ -301,23 +307,22 @@ copas.eventer = {
             local stable = servers[server]
             if not event then
                 -- unsubscribe from all events
-                stable.all[client] = nil
+                for event, etable in pairs(stable) do
+                    etable[client] = nil
+                end
             else
                 -- unsubscribe from specific event
-                if stable.events[event] then
-                    stable.events[event][client] = nil
+                if stable[event] then
+                    stable[event][client] = nil
                 end
             end
         end
 
         local servsubleft = function(server)
             -- check if the client has subscriptions left on this server
-            if servers[server].all[client] then
-                return true
-            end
-            local evs = servers[server].events
-            for ev, _ in pairs(evs) do
-                if ev[client] then
+            local stable = servers[server]
+            for _, etable in pairs(stable) do
+                if etable[client] then
                     return true
                 end
             end
@@ -345,7 +350,7 @@ copas.eventer = {
                 end
             end
             -- check if the client has any subscriptions left, remove if not
-            if next(ct) == nil then
+            if not next(ct) then
                 clients[client] = nil
             end
             -- raise my own event
@@ -373,16 +378,11 @@ copas.eventer = {
         assert(server, "Server parameter cannot be nil")
         local stable = servers[server]
         assert(stable, "Server not found")
-        local etable = stable.events[event]
-        assert(etable, "Event not found for this server")
+        local etable = stable[event]
+        assert(etable, "Event not found; " .. tostring(event))
 
-        -- create all event handler threads
-        local t
-        for cl, hdlr in pairs(stable.all) do
-            t = disp(hdlr, cl, server, event, ...)
-            table.insert(tt,t)
-        end
         -- call event specific handlers
+        local t
         for cl, hdlr in pairs(etable) do
             t = disp(hdlr, cl, server, event, ...)
             table.insert(tt,t)
@@ -450,7 +450,8 @@ copas.eventer.decorate(copas.eventer, eevents)
 
 local cevents      -- do this local, so LuaDoc picks up the next statement
 -------------------------------------------------------------------------------
--- Event list for Copas itself.
+-- Event list for Copas itself. The event structure for Copas will only be
+-- initialized when the eventer is used.
 -- @class table
 -- @name copas.events
 -- @field loopstarting Fired <strong>before</strong> the copas loop starts. It will

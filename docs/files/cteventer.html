@@ -58,7 +58,7 @@
 <h1>File <code>cteventer.lua</code></h1>
 
 
-<p>Dispatching creates a separate copastimer background worker (thread/coroutine) for each client that has to receive the event. The eventer will create a global; <code>copas.eventer</code> for itself. The eventer uses servers and client, the servers should register before firing any events, and the client should subscribe to server events.</p>
+<p>The eventer is an event dispatcher. It works on top of Copas Timer using the workers to create event threads. The eventer uses a publish/subscribe mechanism with servers and clients. The servers should register before firing any events, and the clients should subscribe to server events.<br/>&nbsp<br/>Dispatching creates a separate worker (thread/coroutine) for each client that has to receive the event. This means that separate threads will have be been scheduled but not executed when an event is dispatched. Execution follows later when the Copas Timer loop continues to handle its worker queue in the background. The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.</p>
 
 
 
@@ -227,7 +227,7 @@ unsubscribes a client from events
 	</li>
 	
 	<li>
-	  <code><em>server</em></code>: a unique key to identify the specific server, nil to unsubscribe all
+	  <code><em>server</em></code>: a unique key to identify the specific server, <nil>nil</nil> to unsubscribe all
 	</li>
 	
 	<li>
@@ -776,7 +776,7 @@ unregisters a server that will fire events
 
 
 <dt><a name="copas.events"></a><strong>copas.events</strong></dt>
-<dd>Event list for Copas itself.<br /><br />
+<dd>Event list for Copas itself. The event structure for Copas will only be initialized when the eventer is used.<br /><br />
 
 
 <h3>Fields:</h3>
