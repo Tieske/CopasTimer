@@ -3,7 +3,7 @@
 <html>
 <head>
     <title>Reference</title>
-    <link rel="stylesheet" href="../luadoc.css" type="text/css" />
+    <link rel="stylesheet" href="../../luadoc.css" type="text/css" />
 	<!--meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/-->
 </head>
 
@@ -24,7 +24,7 @@
 <h1>LuaDoc</h1>
 <ul>
 	
-	<li><a href="../index.html">Index</a></li>
+	<li><a href="../../index.html">Index</a></li>
 	
 </ul>
 
@@ -38,12 +38,12 @@
 <h1>Files</h1>
 <ul>
 
+	<li><strong>copas/eventer.lua</strong></li>
+	
 	<li>
-		<a href="../files/copastimer.html">copastimer.lua</a>
+		<a href="../../files/copas/timer.html">copas/timer.lua</a>
 	</li>
 
-	<li><strong>cteventer.lua</strong></li>
-	
 </ul>
 
 
@@ -55,13 +55,17 @@
 
 <div id="content">
 
-<h1>File <code>cteventer.lua</code></h1>
+<h1>File <code>copas/eventer.lua</code></h1>
 
 
-<p>The eventer is an event dispatcher. It works on top of Copas Timer using the workers to create event threads. The eventer uses a publish/subscribe mechanism with servers and clients. The servers should register before firing any events, and the clients should subscribe to server events.<br/>&nbsp<br/>Dispatching creates a separate worker (thread/coroutine) for each client that has to receive the event. This means that separate threads will have been scheduled but not executed when an event is dispatched. Execution follows later when the Copas Timer loop continues to handle its worker queue in the background. The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.</p>
+<p>The eventer is an event dispatcher. It works on top of Copas Timer using the workers to create event threads. The eventer uses a publish/subscribe mechanism with servers and clients. The servers should register before firing any events, and the clients should subscribe to server events.<br/>&nbsp<br/>Dispatching creates a separate worker (thread/coroutine) for each client that has to receive the event. This means that separate threads will have been scheduled but not executed when an event is dispatched. Execution follows later when the Copas Timer loop continues to handle its worker queue in the background. The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.<br/>&nbsp<br/>This module is part of Copas Timer and is free software under the MIT/X11 license.</p>
 
 
 
+<p>Copyright &copy;2011 Thijs Schreijer</p>
+
+
+<p><small><b>Release:</b> Version 0.4.1, Timer module to extend Copas with a timer and worker capability</small></p>
 
 
 
@@ -286,17 +290,17 @@ Decorates an object as an event server. It will provide the object with the foll
 <h3>See also:</h3>
 <ul>
 	
-	<!-- <li><a href="#../files/cteventer.html#clientsubscribeclientsubscribe"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#clientsubscribeclientsubscribe"> -->
 	<li><a href="#clientsubscribe">
 		clientsubscribe</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#clientunsubscribeclientunsubscribe"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#clientunsubscribeclientunsubscribe"> -->
 	<li><a href="#clientunsubscribe">
 		clientunsubscribe</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#serverdispatchserverdispatch"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#serverdispatchserverdispatch"> -->
 	<li><a href="#serverdispatch">
 		serverdispatch</li>
 	</a>
@@ -382,7 +386,7 @@ Waits for an event to be completed in a blocking mode. That is; all event thread
 <h3>See also:</h3>
 <ul>
 	
-	<!-- <li><a href="#../files/cteventer.html#e.waitfore.waitfor"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#e.waitfore.waitfor"> -->
 	<li><a href="#e.waitfor">
 		e.waitfor</li>
 	</a>
@@ -442,7 +446,7 @@ Waits for an event to be completed. That is; all event threads spawned have died
 <h3>See also:</h3>
 <ul>
 	
-	<!-- <li><a href="#../files/cteventer.html#e.finishe.finish"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#e.finishe.finish"> -->
 	<li><a href="#e.finish">
 		e.finish</li>
 	</a>
@@ -550,17 +554,17 @@ Dispatches an event for this server. It functions as a shortcut to <code>serverd
 <h3>See also:</h3>
 <ul>
 	
-	<!-- <li><a href="#../files/cteventer.html#s.eventss.events"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#s.eventss.events"> -->
 	<li><a href="#s.events">
 		s.events</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#decoratedecorate"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#decoratedecorate"> -->
 	<li><a href="#decorate">
 		decorate</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#serverdispatchserverdispatch"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#serverdispatchserverdispatch"> -->
 	<li><a href="#serverdispatch">
 		serverdispatch</li>
 	</a>
@@ -587,7 +591,7 @@ Table (as a set) with the event strings for this server.
 <h3>See also:</h3>
 <ul>
 	
-	<!-- <li><a href="#../files/cteventer.html#decoratedecorate"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#decoratedecorate"> -->
 	<li><a href="#decorate">
 		decorate</li>
 	</a>
@@ -638,17 +642,17 @@ Subscribes a client to the events of this server. It functions as a shortcut to 
 <h3>See also:</h3>
 <ul>
 	
-	<!-- <li><a href="#../files/cteventer.html#s.eventss.events"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#s.eventss.events"> -->
 	<li><a href="#s.events">
 		s.events</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#decoratedecorate"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#decoratedecorate"> -->
 	<li><a href="#decorate">
 		decorate</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#clientsubscribeclientsubscribe"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#clientsubscribeclientsubscribe"> -->
 	<li><a href="#clientsubscribe">
 		clientsubscribe</li>
 	</a>
@@ -692,17 +696,17 @@ Unsubscribes a client from the events of this server. It functions as a shortcut
 <h3>See also:</h3>
 <ul>
 	
-	<!-- <li><a href="#../files/cteventer.html#s.eventss.events"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#s.eventss.events"> -->
 	<li><a href="#s.events">
 		s.events</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#decoratedecorate"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#decoratedecorate"> -->
 	<li><a href="#decorate">
 		decorate</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#clientunsubscribeclientunsubscribe"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#clientunsubscribeclientunsubscribe"> -->
 	<li><a href="#clientunsubscribe">
 		clientunsubscribe</li>
 	</a>
@@ -749,27 +753,27 @@ dispatches an event from a server
 <h3>See also:</h3>
 <ul>
 	
-	<!-- <li><a href="#../files/cteventer.html#e.evente.event"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#e.evente.event"> -->
 	<li><a href="#e.event">
 		e.event</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#e.threadse.threads"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#e.threadse.threads"> -->
 	<li><a href="#e.threads">
 		e.threads</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#e.cancele.cancel"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#e.cancele.cancel"> -->
 	<li><a href="#e.cancel">
 		e.cancel</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#e.waitfore.waitfor"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#e.waitfore.waitfor"> -->
 	<li><a href="#e.waitfor">
 		e.waitfor</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#e.finishe.finish"> -->
+	<!-- <li><a href="#../../files/copas/eventer.html#e.finishe.finish"> -->
 	<li><a href="#e.finish">
 		e.finish</li>
 	</a>

@@ -1,5 +1,5 @@
-require("socket")
-require("copastimer")
+local socket = require("socket")
+local copas = require("copas.timer")
 host = "localhost"
 port = 50000
 

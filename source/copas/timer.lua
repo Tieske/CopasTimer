@@ -8,7 +8,9 @@
 -- <br/>To use the module, make sure to 'require' copastimer before any other
 -- code 'requires' copas. This will make sure that the copas version in use will
 -- be updated before any other code uses it. The changes should be transparent to
--- your existing code.<br/>
+-- your existing code. It should be required as; <code>local copas =
+-- require("copas.timer")</code> because it returns the global <code>copas</code>
+-- table and not a separate timer table.<br/>
 -- <br/>There is a difference between the 2 background mechanisms provided; the
 -- timers run on the main loop, they should never yield and return quickly, but they
 -- are precise. On the other hand the workers run in their own thread (coroutine)
@@ -24,7 +26,7 @@
 -- it will create a busy-wait situation.<br/>
 -- <br/>Copas Timer is free software under the MIT/X11 license.
 -- @copyright 2011 Thijs Schreijer
--- @release Version 0.4.0, Timer module to extend Copas with a timer and worker capability
+-- @release Version 0.4.1, Timer module to extend Copas with a timer and worker capability
 
 local copas = require("copas")
 local socket = require("socket")

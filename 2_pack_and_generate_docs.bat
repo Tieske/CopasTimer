@@ -1,9 +1,8 @@
-copy "c:\Program Files\Lua\5.1\lua\copastimer.lua" source
-copy "c:\Program Files\Lua\5.1\lua\cteventer.lua" source
+copy "c:\Program Files\Lua\5.1\lua\copas\*.lua" source\copas
 copy "c:\Program Files\Lua\5.1\lua\copastimertest.lua" test\test.lua
-copy "c:\Program Files\Lua\5.1\lua\cteventertest.lua" test\evtest.lua
+copy "c:\Program Files\Lua\5.1\lua\copaseventertest.lua" test\evtest.lua
 cd source
-"c:\Program Files\Lua\5.1\lua\luadoc_start.lua" -d ..\docs *.lua 
+"c:\Program Files\Lua\5.1\lua\luadoc_start.lua" -d ..\docs copas\*.lua 
 start ..\docs\index.html
 pause
 

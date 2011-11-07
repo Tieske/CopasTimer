@@ -1,15 +1,11 @@
 
-local copas = require ("copastimer")
+local copas = require ("copas.timer")
 local socket = require ("socket")
 
 local servers = {}
 setmetatable(servers, {__mode = "k"})   -- server table weak keys
 local clients = {}
 setmetatable(clients, {__mode = "k"})   -- client table weak keys
-
--- TODO:
---    * create copas directory with timer and eventer located inside
---    * add some basic tests
 
 -------------------------------------------------------------------------------
 -- The eventer is an event dispatcher. It works on top of Copas Timer using the
@@ -21,7 +17,10 @@ setmetatable(clients, {__mode = "k"})   -- client table weak keys
 -- will have been scheduled but not executed when an event is dispatched. Execution follows later when
 -- the Copas Timer loop continues to handle its worker queue in the background.
 -- The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for
--- the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.
+-- the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.<br/>
+-- <br/>This module is part of Copas Timer and is free software under the MIT/X11 license.
+-- @copyright 2011 Thijs Schreijer
+-- @release Version 0.4.1, Timer module to extend Copas with a timer and worker capability
 
 
 -------------------------------------------------------------------------------

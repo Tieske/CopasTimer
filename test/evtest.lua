@@ -1,7 +1,7 @@
 
 
-local copas = require ("copastimer")
-local ev = require("cteventer")
+local copas = require ("copas.timer")
+local ev = require("copas.eventer")
 local socket = require("socket")
 
 host = "localhost"
@@ -23,11 +23,12 @@ local object1 = {
                 if self.i > 10 then
                     print("we reached the count of 10, so instructing copas to exit...")
                     copas.exitloop(5, true)
+                    -- notice that the timer will be stopped from the eventhandler
                 else
                     self:dispatch(self.events.myEvent, self.i)
                 end
             end, function()
-                print ("Cancelled timer!")
+                print ("---> from the timer 'cancel' handler: I've been cancelled!")
             end, true):arm(0.5)
 
         -- subscribe to copas events
@@ -43,6 +44,7 @@ local object1 = {
             self.i = 0
         elseif event == copas.events.loopstarted then
             copas.addworker(function(...) local t = {...} print(table.concat(t, " ")) end, { "Hello", "world" })
+            -- notice that the line above executes some time after the line below...
             print("COPAS has started, lets wait and see what happens")
         elseif event == copas.events.loopstopping then
             print("COPAS is stopping, cancelling the timer")
@@ -81,7 +83,5 @@ copas.addserver(server, function (skt)
     end)
 
 print("Waiting for some bogus connection... will exit after count hits 10")
---copas.newtimer(nil, function() copas.exitloop(5, true) end, nil, false):arm(5)
-
 copas.loop()                          -- enter loop
 print ("bye, bye...")
