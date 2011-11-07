@@ -27,5 +27,5 @@ build = {
         ["copas.timer"] = "source/copas/timer.lua",
         ["copas.eventer"] = "source/copas/eventer.lua",
     },
-    copy_directories = { "docs", "test" },
+    copy_directories = { "doc", "test" },
 }
