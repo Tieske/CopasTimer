@@ -14,7 +14,7 @@
 -- are precise. On the other hand the workers run in their own thread (coroutine)
 -- and can be yielded if they take too long, but are less precisely timed.<br/>
 -- <br/>The workers are dispatched from a rotating queue, so when a worker is up to run
--- is will be removed from the queue, resumed, and (if not finished) added at the end
+-- it will be removed from the queue, resumed, and (if not finished) added at the end
 -- of the queue again.
 -- <br/><strong>Important:</strong> the workers should never wait for work to come in. They must
 -- exit when done. New work should create a new worker. The reason is that while
@@ -299,8 +299,8 @@ end
 -- abandoning any workerthreads still running.
 -- <ul><li><code>nil</code> or negative: no timeout, continue running until worker queue is empty</li>
 -- <li><code>&lt 0</code>: exit immediately after next loop iteration, do not
--- wait for workers or the <code>copas.events.loopstopping/loopstopped</code> events</li> to complete
--- (timers will be cancelled if set to do so)</ul>
+-- wait for workers nor the <code>copas.events.loopstopping/loopstopped</code> events</li> to complete
+-- (timers will still be cancelled if set to do so)</ul>
 -- @param keeptimers (boolean) if <code>true</code> then the active timers will NOT be cancelled, otherwise
 -- <code>copas.cancelall()</code> will be called to properly cancel all running timers.
 -- @see copas.loop
@@ -549,6 +549,11 @@ end
 -- @param func function to call
 -- @param ... any arguments to be passed to the function
 -- @see copas.newtimer
+-- @usage# local t = socket.gettime()
+-- copas.delayedexecutioner(5, function(txt)
+--         print(txt .. " and it was " .. socket.gettime() - t .. " to be precise.")
+--     end, "This should display in 5 seconds from now.")
+
 copas.delayedexecutioner = function (delay, func, ...)
     local list = {...}
     local f = function()

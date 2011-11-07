@@ -58,7 +58,7 @@
 <h1>File <code>cteventer.lua</code></h1>
 
 
-<p>The eventer is an event dispatcher. It works on top of Copas Timer using the workers to create event threads. The eventer uses a publish/subscribe mechanism with servers and clients. The servers should register before firing any events, and the clients should subscribe to server events.<br/>&nbsp<br/>Dispatching creates a separate worker (thread/coroutine) for each client that has to receive the event. This means that separate threads will have be been scheduled but not executed when an event is dispatched. Execution follows later when the Copas Timer loop continues to handle its worker queue in the background. The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.</p>
+<p>The eventer is an event dispatcher. It works on top of Copas Timer using the workers to create event threads. The eventer uses a publish/subscribe mechanism with servers and clients. The servers should register before firing any events, and the clients should subscribe to server events.<br/>&nbsp<br/>Dispatching creates a separate worker (thread/coroutine) for each client that has to receive the event. This means that separate threads will have been scheduled but not executed when an event is dispatched. Execution follows later when the Copas Timer loop continues to handle its worker queue in the background. The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.</p>
 
 
 
@@ -84,47 +84,57 @@
 	</tr>
 
 	<tr>
-	<td class="name" nowrap><a href="#e:cancel">e:cancel</a>&nbsp;(self)</td>
+	<td class="name" nowrap><a href="#e.cancel">e.cancel</a>&nbsp;(self)</td>
 	<td class="summary">Removes all event related workers from the copas background worker queue.</td>
 	</tr>
 
 	<tr>
-	<td class="name" nowrap><a href="#e:event">e:event</a>&nbsp;()</td>
+	<td class="name" nowrap><a href="#e.event">e.event</a>&nbsp;()</td>
 	<td class="summary">The event string.</td>
 	</tr>
 
 	<tr>
-	<td class="name" nowrap><a href="#e:finish">e:finish</a>&nbsp;(self, timeout)</td>
+	<td class="name" nowrap><a href="#e.finish">e.finish</a>&nbsp;(self, timeout)</td>
 	<td class="summary">Waits for an event to be completed in a blocking mode.</td>
 	</tr>
 
 	<tr>
-	<td class="name" nowrap><a href="#e:threads">e:threads</a>&nbsp;()</td>
+	<td class="name" nowrap><a href="#e.threads">e.threads</a>&nbsp;()</td>
 	<td class="summary">Table with threads (coroutines) created.</td>
 	</tr>
 
 	<tr>
-	<td class="name" nowrap><a href="#e:waitfor">e:waitfor</a>&nbsp;(self, timeout)</td>
+	<td class="name" nowrap><a href="#e.waitfor">e.waitfor</a>&nbsp;(self, timeout)</td>
 	<td class="summary">Waits for an event to be completed.</td>
 	</tr>
 
 	<tr>
-	<td class="name" nowrap><a href="#s:dispatch">s:dispatch</a>&nbsp;(self, event, ...)</td>
+	<td class="name" nowrap><a href="#getclients">getclients</a>&nbsp;(server)</td>
+	<td class="summary">Gets a list of clients of a particular server.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#getsubscriptions">getsubscriptions</a>&nbsp;(client)</td>
+	<td class="summary">Gets a list of subscriptions of a particular client.</td>
+	</tr>
+
+	<tr>
+	<td class="name" nowrap><a href="#s.dispatch">s.dispatch</a>&nbsp;(self, event, ...)</td>
 	<td class="summary">Dispatches an event for this server.</td>
 	</tr>
 
 	<tr>
-	<td class="name" nowrap><a href="#s:events">s:events</a>&nbsp;()</td>
+	<td class="name" nowrap><a href="#s.events">s.events</a>&nbsp;()</td>
 	<td class="summary">Table (as a set) with the event strings for this server.</td>
 	</tr>
 
 	<tr>
-	<td class="name" nowrap><a href="#s:subscribe">s:subscribe</a>&nbsp;(self, client, handler, event)</td>
+	<td class="name" nowrap><a href="#s.subscribe">s.subscribe</a>&nbsp;(self, client, handler, event)</td>
 	<td class="summary">Subscribes a client to the events of this server.</td>
 	</tr>
 
 	<tr>
-	<td class="name" nowrap><a href="#s:unsubscribe">s:unsubscribe</a>&nbsp;(self, client, event)</td>
+	<td class="name" nowrap><a href="#s.unsubscribe">s.unsubscribe</a>&nbsp;(self, client, event)</td>
 	<td class="summary">Unsubscribes a client from the events of this server.</td>
 	</tr>
 
@@ -298,7 +308,7 @@ Decorates an object as an event server. It will provide the object with the foll
 
 
 
-<dt><a name="e:cancel"></a><strong>e:cancel</strong>&nbsp;(self)</dt>
+<dt><a name="e.cancel"></a><strong>e.cancel</strong>&nbsp;(self)</dt>
 <dd>
 Removes all event related workers from the copas background worker queue. Threads will remain in the event object itself, but will no longer be executed as background workers.
 
@@ -324,7 +334,7 @@ Removes all event related workers from the copas background worker queue. Thread
 
 
 
-<dt><a name="e:event"></a><strong>e:event</strong>&nbsp;()</dt>
+<dt><a name="e.event"></a><strong>e.event</strong>&nbsp;()</dt>
 <dd>
 The event string. (this is a field, not a function)
 
@@ -341,9 +351,9 @@ The event string. (this is a field, not a function)
 
 
 
-<dt><a name="e:finish"></a><strong>e:finish</strong>&nbsp;(self, timeout)</dt>
+<dt><a name="e.finish"></a><strong>e.finish</strong>&nbsp;(self, timeout)</dt>
 <dd>
-Waits for an event to be completed in a blocking mode. That is; all event threads spawned have died (this does not include additional threads spawned from them). Current thread will NOT yield while waiting, it will only process the event related threads. It is blocking, so timers, sockets and workers will not run in the mean time, so executing this method may take a long time!
+Waits for an event to be completed in a blocking mode. That is; all event threads spawned have died (this does not include additional threads spawned from them). Current thread will NOT yield while waiting, it will only process the event related threads. It is blocking, so timers, sockets and workers will not run in the mean time, so executing this method may take a long time so use carefully!<br/>&nbspIf it should not block, then use <code>waitfor()</code>.
 
 
 <h3>Parameters:</h3>
@@ -369,12 +379,22 @@ Waits for an event to be completed in a blocking mode. That is; all event thread
 
 
 
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/cteventer.html#e.waitfore.waitfor"> -->
+	<li><a href="#e.waitfor">
+		e.waitfor</li>
+	</a>
+	
+</ul>
+
 </dd>
 
 
 
 
-<dt><a name="e:threads"></a><strong>e:threads</strong>&nbsp;()</dt>
+<dt><a name="e.threads"></a><strong>e.threads</strong>&nbsp;()</dt>
 <dd>
 Table with threads (coroutines) created. One for each event handler dispatched.
 
@@ -391,7 +411,7 @@ Table with threads (coroutines) created. One for each event handler dispatched.
 
 
 
-<dt><a name="e:waitfor"></a><strong>e:waitfor</strong>&nbsp;(self, timeout)</dt>
+<dt><a name="e.waitfor"></a><strong>e.waitfor</strong>&nbsp;(self, timeout)</dt>
 <dd>
 Waits for an event to be completed. That is; all event threads spawned have died, this does not include additional threads spawned from them. Current thread will yield while waiting (so cannot be used from the mainthread!).
 
@@ -419,12 +439,83 @@ Waits for an event to be completed. That is; all event threads spawned have died
 
 
 
+<h3>See also:</h3>
+<ul>
+	
+	<!-- <li><a href="#../files/cteventer.html#e.finishe.finish"> -->
+	<li><a href="#e.finish">
+		e.finish</li>
+	</a>
+	
+</ul>
+
 </dd>
 
 
 
 
-<dt><a name="s:dispatch"></a><strong>s:dispatch</strong>&nbsp;(self, event, ...)</dt>
+<dt><a name="getclients"></a><strong>getclients</strong>&nbsp;(server)</dt>
+<dd>
+Gets a list of clients of a particular server.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>server</em></code>: the server for which to get the subscribed clients
+	</li>
+	
+</ul>
+
+
+
+
+<h3>Usage:</h3>
+<ul><pre class=example>local list = copas.eventer.getclients(copas)     -- get list of Copas clients<br/>list = list[copas.events.loopstarted]            -- get clients of the 'loopstarted' event<br/>print ("the Copas 'loopstarted' event has " .. #list .. " clients subscribed.")</pre></ul>
+
+
+
+<h3>Return value:</h3>
+<ul><code>nil</code> if the server is unregistered, otherwise a table with subscriptions. The result table is keyed by 'event string' and each value is a list of clients that is subscribed to this event.</ul>
+
+
+
+</dd>
+
+
+
+
+<dt><a name="getsubscriptions"></a><strong>getsubscriptions</strong>&nbsp;(client)</dt>
+<dd>
+Gets a list of subscriptions of a particular client.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>client</em></code>: the client for which to get the subscriptions
+	</li>
+	
+</ul>
+
+
+
+
+
+
+<h3>Return value:</h3>
+<ul><code>nil</code> if the client has no subscriptions, otherwise a table with subscriptions. The result table is keyed by 'server' and each value is a list of eventstrings the client is subscribed to on this server.</ul>
+
+
+
+</dd>
+
+
+
+
+<dt><a name="s.dispatch"></a><strong>s.dispatch</strong>&nbsp;(self, event, ...)</dt>
 <dd>
 Dispatches an event for this server. It functions as a shortcut to <code>serverdispatch()</code>.
 
@@ -449,6 +540,9 @@ Dispatches an event for this server. It functions as a shortcut to <code>serverd
 
 
 
+<h3>Usage:</h3>
+<ul><pre class=example>-- create an object and decorate it with event capabilities<br/>local obj1 = {}<br/>copas.eventer.decorate(obj1, { "start", "error", "stop" } )<br/>&nbsp<br/>..... do some stuff, subscribe to events, start the copas loop, etc.<br/>&nbsp<br/>-- raise the start event and include th starttime as an extra<br/>-- parameter to be passed to the eventhandlers<br/>local e = obj1:dispatch(obj1.events.start, socket.gettime())<br/>-- now wait for the event to be completely handled<br/>e:waitfor()</pre></ul>
+
 
 
 
@@ -456,9 +550,9 @@ Dispatches an event for this server. It functions as a shortcut to <code>serverd
 <h3>See also:</h3>
 <ul>
 	
-	<!-- <li><a href="#../files/cteventer.html#s:eventss:events"> -->
-	<li><a href="#s:events">
-		s:events</li>
+	<!-- <li><a href="#../files/cteventer.html#s.eventss.events"> -->
+	<li><a href="#s.events">
+		s.events</li>
 	</a>
 	
 	<!-- <li><a href="#../files/cteventer.html#decoratedecorate"> -->
@@ -478,7 +572,7 @@ Dispatches an event for this server. It functions as a shortcut to <code>serverd
 
 
 
-<dt><a name="s:events"></a><strong>s:events</strong>&nbsp;()</dt>
+<dt><a name="s.events"></a><strong>s.events</strong>&nbsp;()</dt>
 <dd>
 Table (as a set) with the event strings for this server.
 
@@ -505,7 +599,7 @@ Table (as a set) with the event strings for this server.
 
 
 
-<dt><a name="s:subscribe"></a><strong>s:subscribe</strong>&nbsp;(self, client, handler, event)</dt>
+<dt><a name="s.subscribe"></a><strong>s.subscribe</strong>&nbsp;(self, client, handler, event)</dt>
 <dd>
 Subscribes a client to the events of this server. It functions as a shortcut to <code>clientsubscribe()</code>.
 
@@ -534,6 +628,9 @@ Subscribes a client to the events of this server. It functions as a shortcut to 
 
 
 
+<h3>Usage:</h3>
+<ul><pre class=example>-- create an object and decorate it with event capabilities<br/>local obj1 = {}<br/>copas.eventer.decorate(obj1, { "start", "error", "stop" } )<br/>&nbsp<br/>-- create another object and subscribe to events of obj1<br/>local obj2 = {<br/>&nbsp&nbsp&nbsp&nbspeventhandler = function(self, sender, event, ...)<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspprint ("received event: " .. event)<br/>&nbsp&nbsp&nbsp&nbspend<br/>}<br/>obj1:subscribe(obj2, obj1.events.stop)<br/>&nbsp<br/>..... do some stuff, start the copas loop, etc.<br/>&nbsp<br/>-- raise the stop event<br/>local e = obj1:dispatch(obj1.events.stop)</pre></ul>
+
 
 
 
@@ -541,9 +638,9 @@ Subscribes a client to the events of this server. It functions as a shortcut to 
 <h3>See also:</h3>
 <ul>
 	
-	<!-- <li><a href="#../files/cteventer.html#s:eventss:events"> -->
-	<li><a href="#s:events">
-		s:events</li>
+	<!-- <li><a href="#../files/cteventer.html#s.eventss.events"> -->
+	<li><a href="#s.events">
+		s.events</li>
 	</a>
 	
 	<!-- <li><a href="#../files/cteventer.html#decoratedecorate"> -->
@@ -563,7 +660,7 @@ Subscribes a client to the events of this server. It functions as a shortcut to 
 
 
 
-<dt><a name="s:unsubscribe"></a><strong>s:unsubscribe</strong>&nbsp;(self, client, event)</dt>
+<dt><a name="s.unsubscribe"></a><strong>s.unsubscribe</strong>&nbsp;(self, client, event)</dt>
 <dd>
 Unsubscribes a client from the events of this server. It functions as a shortcut to <code>clientunsubscribe()</code>.
 
@@ -595,9 +692,9 @@ Unsubscribes a client from the events of this server. It functions as a shortcut
 <h3>See also:</h3>
 <ul>
 	
-	<!-- <li><a href="#../files/cteventer.html#s:eventss:events"> -->
-	<li><a href="#s:events">
-		s:events</li>
+	<!-- <li><a href="#../files/cteventer.html#s.eventss.events"> -->
+	<li><a href="#s.events">
+		s.events</li>
 	</a>
 	
 	<!-- <li><a href="#../files/cteventer.html#decoratedecorate"> -->
@@ -652,29 +749,29 @@ dispatches an event from a server
 <h3>See also:</h3>
 <ul>
 	
-	<!-- <li><a href="#../files/cteventer.html#e:evente:event"> -->
-	<li><a href="#e:event">
-		e:event</li>
+	<!-- <li><a href="#../files/cteventer.html#e.evente.event"> -->
+	<li><a href="#e.event">
+		e.event</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#e:threadse:threads"> -->
-	<li><a href="#e:threads">
-		e:threads</li>
+	<!-- <li><a href="#../files/cteventer.html#e.threadse.threads"> -->
+	<li><a href="#e.threads">
+		e.threads</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#e:cancele:cancel"> -->
-	<li><a href="#e:cancel">
-		e:cancel</li>
+	<!-- <li><a href="#../files/cteventer.html#e.cancele.cancel"> -->
+	<li><a href="#e.cancel">
+		e.cancel</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#e:waitfore:waitfor"> -->
-	<li><a href="#e:waitfor">
-		e:waitfor</li>
+	<!-- <li><a href="#../files/cteventer.html#e.waitfore.waitfor"> -->
+	<li><a href="#e.waitfor">
+		e.waitfor</li>
 	</a>
 	
-	<!-- <li><a href="#../files/cteventer.html#e:finishe:finish"> -->
-	<li><a href="#e:finish">
-		e:finish</li>
+	<!-- <li><a href="#../files/cteventer.html#e.finishe.finish"> -->
+	<li><a href="#e.finish">
+		e.finish</li>
 	</a>
 	
 </ul>
@@ -783,7 +880,7 @@ unregisters a server that will fire events
 <ul>
 	
 	<li>
-	  <code><em>loopstarting</em></code>: Fired <strong>before</strong> the copas loop starts. It will immediately be finished (see <code>e.finish()</code>). So while the event threads run there will be no timers, sockets, nor workers running. Only these threads.
+	  <code><em>loopstarting</em></code>: Fired <strong>before</strong> the copas loop starts. It will immediately be finished (see <code>e.finish()</code>). So while the event threads run there will be no timers, sockets, nor workers running. Only the threads created for the 'loopstarting' event will run.
 	</li>
 	
 	<li>

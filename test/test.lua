@@ -61,6 +61,12 @@ end
 server = socket.bind(host, port)            -- create a server
 copas.addserver(server, handle)
 
+-- setup a delayed executioner example
+local det = socket.gettime()
+copas.delayedexecutioner(5, function(t)
+        print(t .. " and it was " .. socket.gettime() - det .. " to be precise.")
+    end, "This should display in 5 seconds from now.")
+
 print("Waiting for some bogus connection... will exit after the count down.")
 copas.newtimer(silly, silly, nil, true, nil):arm(2)  -- silly timer
 

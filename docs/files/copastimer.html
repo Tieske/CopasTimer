@@ -58,7 +58,7 @@
 <h1>File <code>copastimer.lua</code></h1>
 
 
-<p>Copas Timer is a module that adds a timer capability to the Copas scheduler. It provides the same base functions <code>step</code> and <code>loop</code> as Copas (it actually replaces them) except that it will also check for (and run) timers expiring and run background workers if there is no IO or timer to handle. It also adds an <code>exitloop</code> method that allows for a controlled exit from the loop.<br/>&nbsp<br/>To use the module, make sure to 'require' copastimer before any other code 'requires' copas. This will make sure that the copas version in use will be updated before any other code uses it. The changes should be transparent to your existing code.<br/>&nbsp<br/>There is a difference between the 2 background mechanisms provided; the timers run on the main loop, they should never yield and return quickly, but they are precise. On the other hand the workers run in their own thread (coroutine) and can be yielded if they take too long, but are less precisely timed.<br/>&nbsp<br/>The workers are dispatched from a rotating queue, so when a worker is up to run is will be removed from the queue, resumed, and (if not finished) added at the end of the queue again. <br/><strong>Important:</strong> the workers should never wait for work to come in. They must exit when done. New work should create a new worker. The reason is that while there are worker threads available the luasocket <code>select</code> statement is called with a 0 timeout (non-blocking) to make sure background work is completed asap. If a worker waits for work (call <code>yield()</code> when it has nothing to do) it will create a busy-wait situation.<br/>&nbsp<br/>Copas Timer is free software under the MIT/X11 license.</p>
+<p>Copas Timer is a module that adds a timer capability to the Copas scheduler. It provides the same base functions <code>step</code> and <code>loop</code> as Copas (it actually replaces them) except that it will also check for (and run) timers expiring and run background workers if there is no IO or timer to handle. It also adds an <code>exitloop</code> method that allows for a controlled exit from the loop.<br/>&nbsp<br/>To use the module, make sure to 'require' copastimer before any other code 'requires' copas. This will make sure that the copas version in use will be updated before any other code uses it. The changes should be transparent to your existing code.<br/>&nbsp<br/>There is a difference between the 2 background mechanisms provided; the timers run on the main loop, they should never yield and return quickly, but they are precise. On the other hand the workers run in their own thread (coroutine) and can be yielded if they take too long, but are less precisely timed.<br/>&nbsp<br/>The workers are dispatched from a rotating queue, so when a worker is up to run it will be removed from the queue, resumed, and (if not finished) added at the end of the queue again. <br/><strong>Important:</strong> the workers should never wait for work to come in. They must exit when done. New work should create a new worker. The reason is that while there are worker threads available the luasocket <code>select</code> statement is called with a 0 timeout (non-blocking) to make sure background work is completed asap. If a worker waits for work (call <code>yield()</code> when it has nothing to do) it will create a busy-wait situation.<br/>&nbsp<br/>Copas Timer is free software under the MIT/X11 license.</p>
 
 
 
@@ -252,6 +252,9 @@ Calls a function delayed, after the specified amount of time. An example use is 
 
 
 
+<h3>Usage:</h3>
+<ul><pre class=example>local t = socket.gettime()<br/>copas.delayedexecutioner(5, function(txt)<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspprint(txt .. " and it was " .. socket.gettime() - t .. " to be precise.")<br/>&nbsp&nbsp&nbsp&nbspend, "This should display in 5 seconds from now.")</pre></ul>
+
 
 
 
@@ -280,7 +283,7 @@ Instructs Copas to exit the loop. It will wait for any background workers to com
 <ul>
 	
 	<li>
-	  <code><em>timeout</em></code>: Timeout (in seconds) after which to forcefully exit the loop, abandoning any workerthreads still running. <ul><li><code>nil</code> or negative: no timeout, continue running until worker queue is empty</li> <li><code>&lt 0</code>: exit immediately after next loop iteration, do not wait for workers or the <code>copas.events.loopstopping/loopstopped</code> events</li> to complete (timers will be cancelled if set to do so)</ul>
+	  <code><em>timeout</em></code>: Timeout (in seconds) after which to forcefully exit the loop, abandoning any workerthreads still running. <ul><li><code>nil</code> or negative: no timeout, continue running until worker queue is empty</li> <li><code>&lt 0</code>: exit immediately after next loop iteration, do not wait for workers nor the <code>copas.events.loopstopping/loopstopped</code> events</li> to complete (timers will still be cancelled if set to do so)</ul>
 	</li>
 	
 	<li>
