@@ -8,7 +8,7 @@ set my_version=0.4.1
 set my_rsrev=1
 set my_name=copastimer
 set my_dir=distr
-set my_filelist=docs source test rockspec
+set my_filelist=doc source test rockspec readme.txt
 rem ===============================================================
 
 echo Creating distribution files;
@@ -29,8 +29,8 @@ set my_fileversion=%my_target%-%my_version%
 set my_fullversion=%my_fileversion%-%my_rsrev%
 
 rem delete old files
-del %my_fullversion%.tar.gz
-del %my_fullversion%.tar.gz.md5.txt
+del %my_fileversion%.tar.gz
+del %my_fileversion%.tar.gz.md5.txt
 
 rem pack files in named tar
 md %my_dir%
