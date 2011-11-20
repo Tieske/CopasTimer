@@ -33,8 +33,8 @@ local socket = require("socket")
 require("coxpcall")
 
 local timerid = 1		-- counter to create unique timerid's
-local timers = {}		-- table with timers by their id
-local order = nil		-- linked list with timers sorted by expiry time, 'order' being the first to expire
+local timers = {}		-- table with running timers by their id
+local order = nil		-- linked list with running timers sorted by expiry time, 'order' being the first to expire
 local PRECISION = 0.02  -- default precision value
 local TIMEOUT = 5       -- default timeout value
 local workers = {}      -- list with background worker threads
@@ -78,9 +78,12 @@ local timeradd = function (t)
     if not order then
         -- list empty, just add
         order=t
+        order.next = nil
+        order.previous = nil
     elseif t.when < order.when then
         -- insert at top of list
         t.next = order
+        t.previous = nil
         order.previous = t
         order = t
     else
@@ -355,12 +358,16 @@ end
 -- @see copas.cancelall
 copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
     return {
-        interval = 1,
+        interval = nil,     -- must be set on first call to arm()
         recurring = recurring,
         -------------------------------------------------------------------------------
-        -- Arms a previously created timer
+        -- Arms a previously created timer. When <code>arm()</code> is called on an already
+        -- armed timer then the timer will be rescheduled, the <code>cancel</code> handler
+        -- will not be called in this case, but the <code>arm</code> handler will run.
         -- @name t:arm
-        -- @param interval the interval after which the timer expires (in seconds)
+        -- @param interval the interval after which the timer expires (in seconds). This must
+        -- be set with the first call to <code>arm()</code> any additional calls will reuse
+        -- the existing interval if no new interval is provided.
         -- @return the timer <code>t</code>
         -- @usage# -- Create a new timer
         -- local t = copas.newtimer(nil, function () print("hello world") end, nil, false)
@@ -370,7 +377,10 @@ copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
         -- @see copas.newtimer
         arm = function(self, interval)
             self.interval = interval or self.interval
+            assert(type(self.interval) == "number", "Interval not set, expected number, got " .. type(self.interval))
             self.when = socket.gettime() + interval
+            -- if armed previously, remove myself
+            timerremove(self)
             -- add to list
             timeradd(self)
             -- run ARM handler
@@ -393,7 +403,8 @@ copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
             end
         end,
         -------------------------------------------------------------------------------
-        -- Cancels a previously armed timer
+        -- Cancels a previously armed timer. This will run the <code>cancel</code> handler
+        -- provided when creating the timer.
         -- @name t:cancel
         -- @usage# -- Create a new timer
         -- local t = copas.newtimer(nil, function () print("hello world") end, nil, false)

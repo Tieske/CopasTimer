@@ -4,7 +4,7 @@ rem ===============================================================
 rem   Update the lines below with newest version information
 rem   and files/directories to be included
 rem ===============================================================
-set my_version=0.4.1
+set my_version=0.4.2
 set my_rsrev=1
 set my_name=copastimer
 set my_dir=distr

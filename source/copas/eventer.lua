@@ -552,6 +552,7 @@ local cevents      -- do this local, so LuaDoc picks up the next statement
 -- @field loopstopped Fired <strong>after</strong> the Copas loop has finished, this event will
 -- immediately be finished (see <code>e.finish()</code>), so the timers,
 -- sockets and workers no longer run.
+-- @see e.finish
 cevents = { "loopstarting", "loopstarted", "loopstopping", "loopstopped" }
 copas.eventer.decorate(copas, cevents )
 

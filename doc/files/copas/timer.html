@@ -124,12 +124,12 @@
 
 	<tr>
 	<td class="name" nowrap><a href="#t:arm">t:arm</a>&nbsp;(self, interval)</td>
-	<td class="summary">Arms a previously created timer </td>
+	<td class="summary">Arms a previously created timer.</td>
 	</tr>
 
 	<tr>
 	<td class="name" nowrap><a href="#t:cancel">t:cancel</a>&nbsp;(self)</td>
-	<td class="summary">Cancels a previously armed timer </td>
+	<td class="summary">Cancels a previously armed timer.</td>
 	</tr>
 
 </table>
@@ -598,7 +598,7 @@ Executes a single Copas step followed by the execution of the first expired (if 
 
 <dt><a name="t:arm"></a><strong>t:arm</strong>&nbsp;(self, interval)</dt>
 <dd>
-Arms a previously created timer
+Arms a previously created timer. When <code>arm()</code> is called on an already armed timer then the timer will be rescheduled, the <code>cancel</code> handler will not be called in this case, but the <code>arm</code> handler will run.
 
 
 <h3>Parameters:</h3>
@@ -609,7 +609,7 @@ Arms a previously created timer
 	</li>
 	
 	<li>
-	  <code><em>interval</em></code>: the interval after which the timer expires (in seconds)
+	  <code><em>interval</em></code>: the interval after which the timer expires (in seconds). This must be set with the first call to <code>arm()</code> any additional calls will reuse the existing interval if no new interval is provided.
 	</li>
 	
 </ul>
@@ -649,7 +649,7 @@ Arms a previously created timer
 
 <dt><a name="t:cancel"></a><strong>t:cancel</strong>&nbsp;(self)</dt>
 <dd>
-Cancels a previously armed timer
+Cancels a previously armed timer. This will run the <code>cancel</code> handler provided when creating the timer.
 
 
 <h3>Parameters:</h3>
