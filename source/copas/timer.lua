@@ -46,6 +46,7 @@ local exiteventthreads  -- table with exit threads to be completed before exitin
 local exitcanceltimers  -- should timers be cancelled after ending the loop
 local exittimeout       -- timeout for workers to exit
 local exittimer         -- timerhandling the exit timeout
+local runningworker     -- the currently running worker table
 
 
 -------------------------------------------------------------------------------
@@ -164,6 +165,10 @@ copas.getworker = function(t)
                 return v
             end
         end
+        -- not found yet, is it now running?
+        if runningworker and runningworker == t or runningworker.thread == t then
+            return runningworker
+        end
         -- wasn't found
         return nil
     end
@@ -180,7 +185,15 @@ copas.removeworker = function(t)
         if popthread(t) then
             return true -- succeeded
         else
-            return false    -- not found
+            if not runningworker then
+                return false    -- not found
+            else
+                -- we're currently being run from a worker, so check whether its that one being removed
+                if runningworker == t or runningworker.thread == t then
+                    runningworker._hasbeenremoved = true
+                    return true
+                end
+            end
         end
     else
         return false    -- not found
@@ -227,13 +240,19 @@ local dowork = function()
     if t then
         -- execute this thread
         t.args = t.args or {}
+        runningworker = t
         local success, err = coroutine.resume(t.thread, unpack(t.args))
+        runningworker = nil
         if not success then
             t.errhandler(nil, err)
         end
         if coroutine.status(t.thread) ~= "dead" then
             t.args = nil    -- handled those, so drop them
-            pushthread(t)   -- add thread to end of queue again for next run
+            if not t._hasbeenremoved then -- double check the worker didn't remove itself
+                pushthread(t)   -- add thread to end of queue again for next run
+            else
+                t._hasbeenremoved = nil
+            end
         end
     end
     return (#workers > 0)

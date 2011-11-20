@@ -6,6 +6,13 @@ http://github.com/Tieske/CopasTimer
 
 Changelog;
 ===================================================================
+xx-xxx-2011; release 0.4.2
+ - fixed undefined behaviour when arming an already armed timer
+ - removed default 1 second interval, now throws an error
+   if the first call to arm does not provide an interval.
+ - bugfix, worker could not be removed from its own thread/coroutine
+
+-------------------------------------------------------------------
 07-Nov-2011; release 0.4.1
  - bugfix, timer could not be cancelled from its own handler.
  - bugfix, worker completed elswhere is no longer resumed.
