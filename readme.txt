@@ -10,7 +10,7 @@ xx-xxx-2011; release 0.4.2
  - fixed undefined behaviour when arming an already armed timer
  - removed default 1 second interval, now throws an error
    if the first call to arm does not provide an interval.
- - bugfix, worker could not be removed from its own thread/coroutine
+ - bugfix, worker could not remove itself from the worker queue
 
 -------------------------------------------------------------------
 07-Nov-2011; release 0.4.1
