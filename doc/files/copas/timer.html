@@ -123,6 +123,11 @@
 	</tr>
 
 	<tr>
+	<td class="name" nowrap><a href="#copas.waitforcondition">copas.waitforcondition</a>&nbsp;(interval, timeout, condition, handler, ...)</td>
+	<td class="summary">Executes a handler function after a specific condition has been met (non-blocking wait).</td>
+	</tr>
+
+	<tr>
 	<td class="name" nowrap><a href="#t:arm">t:arm</a>&nbsp;(self, interval)</td>
 	<td class="summary">Arms a previously created timer.</td>
 	</tr>
@@ -590,6 +595,54 @@ Executes a single Copas step followed by the execution of the first expired (if 
 	</a>
 	
 </ul>
+
+</dd>
+
+
+
+
+<dt><a name="copas.waitforcondition"></a><strong>copas.waitforcondition</strong>&nbsp;(interval, timeout, condition, handler, ...)</dt>
+<dd>
+Executes a handler function after a specific condition has been met (non-blocking wait). This is implemented using a timer, hence both the <code>condition()</code> and <code>handler()</code> functions run on the main thread and should return swiftly and should not yield.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>interval</em></code>: interval (in seconds) for checking the condition
+	</li>
+	
+	<li>
+	  <code><em>timeout</em></code>: timeout value (in seconds) after which the operation fails (note that the <code>handler()</code> will still be called)
+	</li>
+	
+	<li>
+	  <code><em>condition</em></code>: a function that is called repeatedly. It will get the additional parameters specified to <code>waitforcondition()</code>. The function should return <code>true</code> or <code>false</code> depending on whether the condition was met.
+	</li>
+	
+	<li>
+	  <code><em>handler</em></code>: the handler function that will be executed. It will <strong>always</strong> be executed. The first argument to the handler will be <code>true</code> if the condition was met, or <code>false</code> if the operation timed-out, any additional parameters provided to <code>waitforcondition()</code> will be passed after that.
+	</li>
+	
+	<li>
+	  <code><em>...</em></code>: additional parameters passed on to both the <code>condition()</code> and <code>handler()</code> functions.
+	</li>
+	
+</ul>
+
+
+
+
+<h3>Usage:</h3>
+<ul><pre class=example>local count = 1<br/>function check(param)<br/>&nbsp&nbsp&nbsp&nbspprint("Check count ", count, ". Called using param = ", param)<br/>&nbsp&nbsp&nbsp&nbspcount = count + 1<br/>&nbsp&nbsp&nbsp&nbspreturn (count == 10)<br/>end<br/>&nbsp<br/>function done(conditionmet, param)<br/>&nbsp&nbsp&nbsp&nbspif conditionmet then<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspprint("The condition was met when count reached ", count - 1,". Called using param = ", param)<br/>&nbsp&nbsp&nbsp&nbspelse<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspprint("Failed, condition was not met. Called using param = ", param)<br/>&nbsp&nbsp&nbsp&nbspend<br/>end<br/>&nbsp<br/>copas.waitforcondition(0.1, 5, check, done, "1234567890")</pre></ul>
+
+
+
+<h3>Return value:</h3>
+<ul>timer that verifies the condition.</ul>
+
+
 
 </dd>
 

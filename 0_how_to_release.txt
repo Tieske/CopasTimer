@@ -1,6 +1,6 @@
 Instructions for setting up a new release;
 
-1) Update 'copastimer.lua' with the new version number (use 1_edit_source.bat)
+1) Update sourcefiles with the new version number (use 1_edit_source.bat)
 2) Generate documentation (use 2_pack_and_generate_docs.bat)
 3) Create/update rockspec file with new version number (in file as well as the filename itself)
 4) Check/update 3_create_tar.bat with version and revision number

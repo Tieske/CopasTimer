@@ -11,6 +11,7 @@ xx-xxx-2011; release 0.4.2
  - removed default 1 second interval, now throws an error
    if the first call to arm does not provide an interval.
  - bugfix, worker could not remove itself from the worker queue
+ - added method copas.waitforcondition() to the timer module
 
 -------------------------------------------------------------------
 07-Nov-2011; release 0.4.1

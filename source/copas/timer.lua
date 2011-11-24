@@ -595,5 +595,85 @@ copas.delayedexecutioner = function (delay, func, ...)
 end
 
 
+-------------------------------------------------------------------------------
+-- Executes a handler function after a specific condition has been met
+-- (non-blocking wait). This is implemented using a timer, hence both the
+-- <code>condition()</code> and <code>handler()</code> functions run on the main
+-- thread and should return swiftly and should not yield.
+-- @param interval interval (in seconds) for checking the condition
+-- @param timeout timeout value (in seconds) after which the operation fails
+-- (note that the <code>handler()</code> will still be called)
+-- @param condition a function that is called repeatedly. It will get the
+-- additional parameters specified to <code>waitforcondition()</code>. The
+-- function should return <code>true</code> or <code>false</code> depending on
+-- whether the condition was met.
+-- @param handler the handler function that will be executed. It will
+-- <strong>always</strong> be executed. The first argument to the handler will
+-- be <code>true</code> if the condition was met, or <code>false</code> if the
+-- operation timed-out, any additional parameters provided to
+-- <code>waitforcondition()</code> will be passed after that.
+-- @param ... additional parameters passed on to both the <code>condition()</code>
+-- and <code>handler()</code> functions.
+-- @return timer that verifies the condition.
+-- @usage# local count = 1
+-- function check(param)
+--     print("Check count ", count, ". Called using param = ", param)
+--     count = count + 1
+--     return (count == 10)
+-- end
+-- &nbsp
+-- function done(conditionmet, param)
+--     if conditionmet then
+--         print("The condition was met when count reached ", count - 1,". Called using param = ", param)
+--     else
+--         print("Failed, condition was not met. Called using param = ", param)
+--     end
+-- end
+-- &nbsp
+-- copas.waitforcondition(0.1, 5, check, done, "1234567890")
+copas.waitforcondition = function (interval, timeout, condition, handler, ...)
+    assert (interval,'No interval provided')
+    assert (timeout,'No timeout provided')
+    assert (condition,'No condition function provided')
+    assert (handler,'No handler function provided')
+
+    local arglist = {...}
+    local timeouttime = socket.gettime() + timeout
+    local t
+    t = copas.newtimer(nil, function()
+            -- timer function, check condition
+            local result, err = pcall(condition, unpack(arglist))
+            if result == false then
+                -- we had an error
+                print("copas.waitforcondition; condition check returned error: " .. tostring(err))
+                t:cancel()
+            else
+                local conditionmet = err
+                if conditionmet then
+                    -- completed, cancel timer, call handler with success
+                    t:cancel()
+                    local result, err = pcall(handler, conditionmet, unpack(arglist))
+                    if not result then
+                        -- we had an error calling the handler
+                        print("copas.waitforcondition; handler returned error after condition was met: " .. tostring(err))
+                    end
+                else
+                    if timeouttime < socket.gettime() then
+                        -- timeout, call handler with first argument 'false' to indicate timeout
+                        t:cancel()
+                        local result, err = pcall(handler, conditionmet, unpack(arglist))
+                        if not result then
+                            -- we had an error
+                            print("copas.waitforcondition; handler returned error after waiting timed-out: " .. tostring(err))
+                        end
+                    else
+                        -- Not met, but also not timed-out yet, do nothing, let timer continue
+                    end
+                end
+            end
+        end, nil, true):arm(interval)
+    return t
+end
+
 -- return existing/modified copas table
 return copas
