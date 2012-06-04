@@ -19,8 +19,8 @@ setmetatable(clients, {__mode = "k"})   -- client table weak keys
 -- The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for
 -- the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.<br/>
 -- <br/>This module is part of Copas Timer and is free software under the MIT/X11 license.
--- @copyright 2011 Thijs Schreijer
--- @release Version 0.4.1, Timer module to extend Copas with a timer and worker capability
+-- @copyright 2011-2012 Thijs Schreijer
+-- @release Version 0.4.2, Timer module to extend Copas with a timer and worker capability
 
 
 -------------------------------------------------------------------------------

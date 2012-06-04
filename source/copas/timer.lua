@@ -25,8 +25,8 @@
 -- If a worker waits for work (call <code>yield()</code> when it has nothing to do)
 -- it will create a busy-wait situation.<br/>
 -- <br/>Copas Timer is free software under the MIT/X11 license.
--- @copyright 2011 Thijs Schreijer
--- @release Version 0.4.1, Timer module to extend Copas with a timer and worker capability
+-- @copyright 2011-2012 Thijs Schreijer
+-- @release Version 0.4.2, Timer module to extend Copas with a timer and worker capability
 
 local copas = require("copas")
 local socket = require("socket")

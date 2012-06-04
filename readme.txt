@@ -1,12 +1,12 @@
 Copas Timer is free software under the MIT/X11 license.
-Copyright 2011 Thijs Schreijer
+Copyright 2011-2012 Thijs Schreijer
 
 See included documentation for usage, source is available at
 http://github.com/Tieske/CopasTimer
 
 Changelog;
 ===================================================================
-xx-xxx-2011; release 0.4.2
+04-Jun-2012; release 0.4.2
  - fixed undefined behaviour when arming an already armed timer
  - removed default 1 second interval, now throws an error
    if the first call to arm does not provide an interval.

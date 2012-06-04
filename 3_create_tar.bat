@@ -19,9 +19,12 @@ echo Rockspec revision   : %my_rsrev%
 echo.
 echo If this is not correct, stop and update the initial lines of this batchfile
 echo.
+echo PS: must run this batchfile as administrator
 echo.
 pause
 
+rem move to directory containing this batch file
+cd %~dp0
 
 rem setup names and directories
 set my_target=%my_dir%\%my_name%
