@@ -1,8 +1,8 @@
 Copas Timer is free software under the MIT/X11 license.
 Copyright 2011-2012 Thijs Schreijer
 
-See included documentation for usage, source is available at
-http://github.com/Tieske/CopasTimer
+Documentation: http://tieske.github.com/CopasTimer/
+Source: http://github.com/Tieske/CopasTimer
 
 Changelog;
 ===================================================================
