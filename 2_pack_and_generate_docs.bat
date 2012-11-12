@@ -22,7 +22,7 @@ copy "%LUA_SOURCEPATH%\copas\*.lua" source\copas
 
 rem go to source directory and start LuaDoc
 cd source
-"%LUA_SOURCEPATH%\luadoc_start.lua" -d ..\doc copas\*.lua 
+"%LUA_SOURCEPATH%\luadoc_start.lua" -r ..\readme.md -d ..\doc copas\*.lua 
 start ..\doc\index.html
 pause
 
