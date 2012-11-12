@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <title>Luadocs for copas/timer.lua</title>
     <link rel="stylesheet" href="../../luadoc.css" type="text/css" />
@@ -22,7 +22,7 @@
 <div id="navigation">
 
 
-<h1>LuaDoc</h1>
+<h2>LuaDoc</h2>
 <ul>
 	
 	<li><a href="../../index.html">Index</a></li>
@@ -36,7 +36,7 @@
 
 <!-- File list -->
 
-<h1>Files</h1>
+<h2>Files</h2>
 <ul>
 
 	<li>
@@ -56,17 +56,19 @@
 
 <div id="content">
 
-<h1>File <code>copas/timer.lua</code></h1>
+<h1>File "<code>copas/timer.lua</code>"</h1>
 
 
-<p>Copas Timer is a module that adds a timer capability to the Copas scheduler. It provides the same base functions <code>step</code> and <code>loop</code> as Copas (it actually replaces them) except that it will also check for (and run) timers expiring and run background workers if there is no IO or timer to handle. It also adds an <code>exitloop</code> method that allows for a controlled exit from the loop.<br/>&nbsp<br/>To use the module, make sure to 'require' copastimer before any other code 'requires' copas. This will make sure that the copas version in use will be updated before any other code uses it. The changes should be transparent to your existing code. It should be required as; <code>local copas = require("copas.timer")</code> because it returns the global <code>copas</code> table and not a separate timer table.<br/>&nbsp<br/>There is a difference between the 2 background mechanisms provided; the timers run on the main loop, they should never yield and return quickly, but they are precise. On the other hand the workers run in their own thread (coroutine) and can be yielded if they take too long, but are less precisely timed.<br/>&nbsp<br/>The workers are dispatched from a rotating queue, so when a worker is up to run it will be removed from the queue, resumed, and (if not finished) added at the end of the queue again. <br/><strong>Important:</strong> the workers should never wait for work to come in. They must exit when done. New work should create a new worker. The reason is that while there are worker threads available the luasocket <code>select</code> statement is called with a 0 timeout (non-blocking) to make sure background work is completed asap. If a worker waits for work (call <code>yield()</code> when it has nothing to do) it will create a busy-wait situation.<br/>&nbsp<br/>Copas Timer is free software under the MIT/X11 license.</p>
+<p>Copas Timer is a module that adds a timer capability to the Copas scheduler. It provides the same base functions <code>step</code> and <code>loop</code> as Copas (it actually replaces them) except that it will also check for (and run) timers expiring and run background workers if there is no IO or timer to handle. It also adds an <code>exitloop</code> method that allows for a controlled exit from the loop.<br/>&nbsp;<br/>To use the module, make sure to 'require' copastimer before any other code 'requires' copas. This will make sure that the copas version in use will be updated before any other code uses it. The changes should be transparent to your existing code. It should be required as; <code>local copas = require("copas.timer")</code> because it returns the global <code>copas</code> table and not a separate timer table.<br/>&nbsp;<br/>There is a difference between the 2 background mechanisms provided; the timers run on the main loop, they should never yield and return quickly, but they are precise. On the other hand the workers run in their own thread (coroutine) and can be yielded if they take too long, but are less precisely timed.<br/>&nbsp;<br/>The workers are dispatched from a rotating queue, so when a worker is up to run it will be removed from the queue, resumed, and (if not finished) added at the end of the queue again. <br/><strong>Important:</strong> the workers should never wait for work to come in. They must exit when done. New work should create a new worker. The reason is that while there are worker threads available the luasocket <code>select</code> statement is called with a 0 timeout (non-blocking) to make sure background work is completed asap. If a worker waits for work (call <code>yield()</code> when it has nothing to do) it will create a busy-wait situation.<br/>&nbsp;<br/>Copas Timer is free software under the MIT/X11 license.</p>
 
 
 
-<p>Copyright &copy;2011-2012 Thijs Schreijer</p>
+<p>Copyright &copy; 2011-2012 Thijs Schreijer</p>
 
 
 <p><small><b>Release:</b> Version 0.4.2, Timer module to extend Copas with a timer and worker capability</small></p>
+
+
 
 
 
@@ -141,10 +143,6 @@
 </table>
 
 
-
-
-
-
 <br/>
 <br/>
 
@@ -161,19 +159,19 @@
 Adds a worker thread. The threads will be executed when there is no IO nor any expiring timer to run. The <code>args</code> key of the returned table can be modified while the thread is still scheduled. After the <code>args</code> have been passed to <code>resume</code> the <code>args</code> will be set to <code>nil</code>. If <code>args</code> is set again, then the next time the thread is up to run, the new set of <code>args</code> will be passed on to the thread. This enables feeding the thread with data.
 
 
-<h3>Parameters</h3>
+<h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  func: function to execute in the coroutine
+	  <code><em>func</em></code>: function to execute in the coroutine
 	</li>
 	
 	<li>
-	  args: table with arguments for the function
+	  <code><em>args</em></code>: table with arguments for the function
 	</li>
 	
 	<li>
-	  errhandler: function to handle any errors returned
+	  <code><em>errhandler</em></code>: function to handle any errors returned
 	</li>
 	
 </ul>
@@ -181,26 +179,40 @@ Adds a worker thread. The threads will be executed when there is no IO nor any e
 
 
 
-<h3>Usage:</h3>
-<pre class=example>
-copas.addworker(function(...)<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsplocal t = {...}<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspprint(table.concat(t, " "))<br/>&nbsp&nbsp&nbsp&nbspend, { "Hello", "world" })
-</pre>
+
+<div>
 
 
-
-<h3>Return value:</h3>
+<h3 class="inline-block">Return value:</h3>
 table with keys <code>thread, args, errhandler</code>
 
+</div>
 
+
+
+ 
+<div>
+
+<h3 class="inline-block">Example:</h3>
+<pre class="example">copas.addworker(function(...)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;local t = {...}<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print(table.concat(t, " "))<br/>&nbsp;&nbsp;&nbsp;&nbsp;end, { "Hello", "world" })</pre>
+
+</div>
+
+
+
+<div>
 
 <h3>See also:</h3>
 <ul>
 	
 	<li><a href="../../files/copas/timer.html#copas.removeworker">
 		copas.removeworker
-	</a>
+	</a></li>
 	
 </ul>
+
+</div>
+
 
 </dd>
 
@@ -219,14 +231,21 @@ Cancels all currently armed timers.
 
 
 
+
+
+<div>
+
 <h3>See also:</h3>
 <ul>
 	
 	<li><a href="../../files/copas/timer.html#copas.exitloop">
 		copas.exitloop
-	</a>
+	</a></li>
 	
 </ul>
+
+</div>
+
 
 </dd>
 
@@ -238,19 +257,19 @@ Cancels all currently armed timers.
 Calls a function delayed, after the specified amount of time. An example use is a call that requires communications to be running already, but if you start the Copas loop, it basically blocks; classic chicken-egg. In this case use the <code>delayedexecutioner</code> to call the method in 0.5 seconds, just before starting the CopasTimer loop. Now when the method actually executes, communications will be online already. The internals use a timer, so it is executed on the main loop and should not be suspended by calling <code>yield()</code>.
 
 
-<h3>Parameters</h3>
+<h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  delay: delay in seconds before calling the function
+	  <code><em>delay</em></code>: delay in seconds before calling the function
 	</li>
 	
 	<li>
-	  func: function to call
+	  <code><em>func</em></code>: function to call
 	</li>
 	
 	<li>
-	  ...: any arguments to be passed to the function
+	  <code><em>...</em></code>: any arguments to be passed to the function
 	</li>
 	
 </ul>
@@ -258,23 +277,32 @@ Calls a function delayed, after the specified amount of time. An example use is 
 
 
 
-<h3>Usage:</h3>
-<pre class=example>
-local t = socket.gettime()<br/>copas.delayedexecutioner(5, function(txt)<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspprint(txt .. " and it was " .. socket.gettime() - t .. " to be precise.")<br/>&nbsp&nbsp&nbsp&nbspend, "This should display in 5 seconds from now.")
-</pre>
 
 
 
+ 
+<div>
 
+<h3 class="inline-block">Example:</h3>
+<pre class="example">local t = socket.gettime()<br/>copas.delayedexecutioner(5, function(txt)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print(txt .. " and it was " .. socket.gettime() - t .. " to be precise.")<br/>&nbsp;&nbsp;&nbsp;&nbsp;end, "This should display in 5 seconds from now.")</pre>
+
+</div>
+
+
+
+<div>
 
 <h3>See also:</h3>
 <ul>
 	
 	<li><a href="../../files/copas/timer.html#copas.newtimer">
 		copas.newtimer
-	</a>
+	</a></li>
 	
 </ul>
+
+</div>
+
 
 </dd>
 
@@ -286,15 +314,15 @@ local t = socket.gettime()<br/>copas.delayedexecutioner(5, function(txt)<br/>&nb
 Instructs Copas to exit the loop. It will wait for any background workers to complete. If the <code>copas.eventer</code> is used then the timeout will only start after the <code>copas.events.loopstopping</code> event has been completely handled.
 
 
-<h3>Parameters</h3>
+<h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  timeout: Timeout (in seconds) after which to forcefully exit the loop, abandoning any workerthreads still running. <ul><li><code>nil</code> or negative: no timeout, continue running until worker queue is empty</li> <li><code>&lt 0</code>: exit immediately after next loop iteration, do not wait for workers nor the <code>copas.events.loopstopping/loopstopped</code> events</li> to complete (timers will still be cancelled if set to do so)</ul>
+	  <code><em>timeout</em></code>: Timeout (in seconds) after which to forcefully exit the loop, abandoning any workerthreads still running. <ul><li><code>nil</code> or negative: no timeout, continue running until worker queue is empty</li> <li><code>&lt 0</code>: exit immediately after next loop iteration, do not wait for workers nor the <code>copas.events.loopstopping/loopstopped</code> events</li> to complete (timers will still be cancelled if set to do so)</ul>
 	</li>
 	
 	<li>
-	  keeptimers: (boolean) if <code>true</code> then the active timers will NOT be cancelled, otherwise <code>copas.cancelall()</code> will be called to properly cancel all running timers.
+	  <code><em>keeptimers</em></code>: (boolean) if <code>true</code> then the active timers will NOT be cancelled, otherwise <code>copas.cancelall()</code> will be called to properly cancel all running timers.
 	</li>
 	
 </ul>
@@ -305,19 +333,26 @@ Instructs Copas to exit the loop. It will wait for any background workers to com
 
 
 
+
+
+
+<div>
 
 <h3>See also:</h3>
 <ul>
 	
 	<li><a href="../../files/copas/timer.html#copas.loop">
 		copas.loop
-	</a>
+	</a></li>
 	
 	<li><a href="../../files/copas/timer.html#copas.isexiting">
 		copas.isexiting
-	</a>
+	</a></li>
 	
 </ul>
+
+</div>
+
 
 </dd>
 
@@ -329,11 +364,11 @@ Instructs Copas to exit the loop. It will wait for any background workers to com
 Returns a background worker
 
 
-<h3>Parameters</h3>
+<h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  t: thread (coroutine) to get from the list
+	  <code><em>t</em></code>: thread (coroutine) to get from the list
 	</li>
 	
 </ul>
@@ -341,26 +376,40 @@ Returns a background worker
 
 
 
-<h3>Usage:</h3>
-<pre class=example>
-if copas.getworker(coroutine.running()) then<br/>&nbsp&nbsp&nbsp&nbspprint ("I'm running as a background worker")<br/>else<br/>&nbsp&nbsp&nbsp&nbspprint ("No background worker found, so I'm on my own")<br/>end
-</pre>
+
+<div>
 
 
-
-<h3>Return value:</h3>
+<h3 class="inline-block">Return value:</h3>
 the thread table (as earlier returned by <code>addworker()</code>) or <code>nil</code> if it wasn't found
 
+</div>
 
+
+
+ 
+<div>
+
+<h3 class="inline-block">Example:</h3>
+<pre class="example">if copas.getworker(coroutine.running()) then<br/>&nbsp;&nbsp;&nbsp;&nbsp;print ("I'm running as a background worker")<br/>else<br/>&nbsp;&nbsp;&nbsp;&nbsp;print ("No background worker found, so I'm on my own")<br/>end</pre>
+
+</div>
+
+
+
+<div>
 
 <h3>See also:</h3>
 <ul>
 	
 	<li><a href="../../files/copas/timer.html#copas.addworker">
 		copas.addworker
-	</a>
+	</a></li>
 	
 </ul>
+
+</div>
+
 
 </dd>
 
@@ -375,30 +424,44 @@ Indicator of the loop running or exiting.
 
 
 
-<h3>Usage:</h3>
-<pre class=example>
-if copas.isexiting() ~= nil then<br/>&nbsp&nbsp&nbsp&nbsp-- loop is currently running, make it exit after the worker queue is empty and cancel any timers<br/>&nbsp&nbsp&nbsp&nbspcopas.exitloop(nil, false)<br/>end
-</pre>
+
+<div>
 
 
-
-<h3>Return value:</h3>
+<h3 class="inline-block">Return value:</h3>
 <ul> <li><code>nil</code>: the loop is not running, </li> <li><code>false</code>: the loop is running, or </li> <li><code>true</code>: the loop is scheduled to stop</li></ul>
 
+</div>
 
+
+
+ 
+<div>
+
+<h3 class="inline-block">Example:</h3>
+<pre class="example">if copas.isexiting() ~= nil then<br/>&nbsp;&nbsp;&nbsp;&nbsp;-- loop is currently running, make it exit after the worker queue is empty and cancel any timers<br/>&nbsp;&nbsp;&nbsp;&nbsp;copas.exitloop(nil, false)<br/>end</pre>
+
+</div>
+
+
+
+<div>
 
 <h3>See also:</h3>
 <ul>
 	
 	<li><a href="../../files/copas/timer.html#copas.loop">
 		copas.loop
-	</a>
+	</a></li>
 	
 	<li><a href="../../files/copas/timer.html#copas.exitloop">
 		copas.exitloop
-	</a>
+	</a></li>
 	
 </ul>
+
+</div>
+
 
 </dd>
 
@@ -410,15 +473,15 @@ if copas.isexiting() ~= nil then<br/>&nbsp&nbsp&nbsp&nbsp-- loop is currently ru
 Executes an endless loop handling Copas steps and timers  (it replaces the original <code>copas.loop()</code>). The loop can be terminated by calling <code>exitloop</code>.
 
 
-<h3>Parameters</h3>
+<h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  timeout: time out (in seconds) to be used. The timer list will be checked at least every <code>timeout</code> period for expired timers. The actual interval will be between <code>0</code> and <code>timeout</code> based on the next timers expire time or worker threads being available. If not provided, it defaults to 5 seconds.
+	  <code><em>timeout</em></code>: time out (in seconds) to be used. The timer list will be checked at least every <code>timeout</code> period for expired timers. The actual interval will be between <code>0</code> and <code>timeout</code> based on the next timers expire time or worker threads being available. If not provided, it defaults to 5 seconds.
 	</li>
 	
 	<li>
-	  precision: the precision of the timer (in seconds). Whenever the timer list is checked for expired timers, a timer is considered expired when the exact expire time is in the past or up to <code>precision</code> seconds in the future. It defaults to 0.02 if not provided.
+	  <code><em>precision</em></code>: the precision of the timer (in seconds). Whenever the timer list is checked for expired timers, a timer is considered expired when the exact expire time is in the past or up to <code>precision</code> seconds in the future. It defaults to 0.02 if not provided.
 	</li>
 	
 </ul>
@@ -429,23 +492,30 @@ Executes an endless loop handling Copas steps and timers  (it replaces the origi
 
 
 
+
+
+
+<div>
 
 <h3>See also:</h3>
 <ul>
 	
 	<li><a href="../../files/copas/timer.html#copas.step">
 		copas.step
-	</a>
+	</a></li>
 	
 	<li><a href="../../files/copas/timer.html#copas.exitloop">
 		copas.exitloop
-	</a>
+	</a></li>
 	
 	<li><a href="../../files/copas/timer.html#copas.isexiting">
 		copas.isexiting
-	</a>
+	</a></li>
 	
 </ul>
+
+</div>
+
 
 </dd>
 
@@ -457,27 +527,27 @@ Executes an endless loop handling Copas steps and timers  (it replaces the origi
 Creates a new timer. After creating call the <code>arm</code> method of the new timer to actually schedule it. REMARK: the background workers run in their own thread (coroutine) and hence need to <code>yield</code> when their operation takes to long, but the timers run on the main loop, and hence the callbacks should never <code>yield()</code>, in those cases consider adding a worker through <code>copas.addworker()</code> from the timer callback.
 
 
-<h3>Parameters</h3>
+<h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  f_arm: callback function to execute when the timer is armed
+	  <code><em>f_arm</em></code>: callback function to execute when the timer is armed
 	</li>
 	
 	<li>
-	  f_expire: callback function to execute when the timer expires
+	  <code><em>f_expire</em></code>: callback function to execute when the timer expires
 	</li>
 	
 	<li>
-	  f_cancel: callback function to execute when the timer is cancelled
+	  <code><em>f_cancel</em></code>: callback function to execute when the timer is cancelled
 	</li>
 	
 	<li>
-	  recurring: (boolean) should the timer automatically be re-armed with the same interval after it expired
+	  <code><em>recurring</em></code>: (boolean) should the timer automatically be re-armed with the same interval after it expired
 	</li>
 	
 	<li>
-	  f_error: callback function to execute when any of the other callbacks generates an error
+	  <code><em>f_error</em></code>: callback function to execute when any of the other callbacks generates an error
 	</li>
 	
 </ul>
@@ -485,31 +555,40 @@ Creates a new timer. After creating call the <code>arm</code> method of the new 
 
 
 
-<h3>Usage:</h3>
-<pre class=example>
--- Create a new timer<br/>local t = copas.newtimer(nil, function () print("hello world") end, nil, false, nil)<br/>&nbsp;<br/>-- Create timer and arm it immediately, to be run in 5 seconds<br/>copas.newtimer(nil, function () print("hello world") end, nil, false, nil):arm(5)<br/>&nbsp;<br/>-- Create timer and arm it immediately, to be run now (function f is provide twice!) and again every 5 seconds<br/>local f = function () print("hello world") end<br/>copas.newtimer(f, f, nil, true, nil):arm(5)
-</pre>
 
 
 
+ 
+<div>
 
+<h3 class="inline-block">Example:</h3>
+<pre class="example">-- Create a new timer<br/>local t = copas.newtimer(nil, function () print("hello world") end, nil, false, nil)<br/>&nbsp;<br/>-- Create timer and arm it immediately, to be run in 5 seconds<br/>copas.newtimer(nil, function () print("hello world") end, nil, false, nil):arm(5)<br/>&nbsp;<br/>-- Create timer and arm it immediately, to be run now (function f is provide twice!) and again every 5 seconds<br/>local f = function () print("hello world") end<br/>copas.newtimer(f, f, nil, true, nil):arm(5)</pre>
+
+</div>
+
+
+
+<div>
 
 <h3>See also:</h3>
 <ul>
 	
 	<li><a href="../../files/copas/timer.html#t:arm">
 		t:arm
-	</a>
+	</a></li>
 	
 	<li><a href="../../files/copas/timer.html#t:cancel">
 		t:cancel
-	</a>
+	</a></li>
 	
 	<li><a href="../../files/copas/timer.html#copas.cancelall">
 		copas.cancelall
-	</a>
+	</a></li>
 	
 </ul>
+
+</div>
+
 
 </dd>
 
@@ -521,11 +600,11 @@ Creates a new timer. After creating call the <code>arm</code> method of the new 
 Removes a worker thread
 
 
-<h3>Parameters</h3>
+<h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  t: thread table (as returned by <code>copas.addworker()</code>), or actual thread to be removed.
+	  <code><em>t</em></code>: thread table (as returned by <code>copas.addworker()</code>), or actual thread to be removed.
 	</li>
 	
 </ul>
@@ -534,20 +613,32 @@ Removes a worker thread
 
 
 
+<div>
 
-<h3>Return value:</h3>
+
+<h3 class="inline-block">Return value:</h3>
 <code>true</code> if success or <code>false</code> if it wasn't found
 
+</div>
 
+
+
+
+
+
+<div>
 
 <h3>See also:</h3>
 <ul>
 	
 	<li><a href="../../files/copas/timer.html#copas.addworker">
 		copas.addworker
-	</a>
+	</a></li>
 	
 </ul>
+
+</div>
+
 
 </dd>
 
@@ -559,15 +650,15 @@ Removes a worker thread
 Executes a single Copas step followed by the execution of the first expired (if any) timer in the timers list (it replaces the original <code>copas.step()</code>) if there is no timer that expires then it will try to execute a worker step if available.
 
 
-<h3>Parameters</h3>
+<h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  timeout: timeout value (in seconds) to pass to the Copas step handler
+	  <code><em>timeout</em></code>: timeout value (in seconds) to pass to the Copas step handler
 	</li>
 	
 	<li>
-	  precision: see parameter <code>precision</code> at function <code>loop()</code>.
+	  <code><em>precision</em></code>: see parameter <code>precision</code> at function <code>loop()</code>.
 	</li>
 	
 </ul>
@@ -576,20 +667,32 @@ Executes a single Copas step followed by the execution of the first expired (if 
 
 
 
+<div>
 
-<h3>Return value:</h3>
+
+<h3 class="inline-block">Return value:</h3>
 time in seconds until the next timer in the list expires, 0 if there is a worker waiting for execution, or <code>nil</code> if there is no timer nor any worker.
 
+</div>
 
+
+
+
+
+
+<div>
 
 <h3>See also:</h3>
 <ul>
 	
 	<li><a href="../../files/copas/timer.html#copas.loop">
 		copas.loop
-	</a>
+	</a></li>
 	
 </ul>
+
+</div>
+
 
 </dd>
 
@@ -601,27 +704,27 @@ time in seconds until the next timer in the list expires, 0 if there is a worker
 Executes a handler function after a specific condition has been met (non-blocking wait). This is implemented using a timer, hence both the <code>condition()</code> and <code>handler()</code> functions run on the main thread and should return swiftly and should not yield.
 
 
-<h3>Parameters</h3>
+<h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  interval: interval (in seconds) for checking the condition
+	  <code><em>interval</em></code>: interval (in seconds) for checking the condition
 	</li>
 	
 	<li>
-	  timeout: timeout value (in seconds) after which the operation fails (note that the <code>handler()</code> will still be called)
+	  <code><em>timeout</em></code>: timeout value (in seconds) after which the operation fails (note that the <code>handler()</code> will still be called)
 	</li>
 	
 	<li>
-	  condition: a function that is called repeatedly. It will get the additional parameters specified to <code>waitforcondition()</code>. The function should return <code>true</code> or <code>false</code> depending on whether the condition was met.
+	  <code><em>condition</em></code>: a function that is called repeatedly. It will get the additional parameters specified to <code>waitforcondition()</code>. The function should return <code>true</code> or <code>false</code> depending on whether the condition was met.
 	</li>
 	
 	<li>
-	  handler: the handler function that will be executed. It will <strong>always</strong> be executed. The first argument to the handler will be <code>true</code> if the condition was met, or <code>false</code> if the operation timed-out, any additional parameters provided to <code>waitforcondition()</code> will be passed after that.
+	  <code><em>handler</em></code>: the handler function that will be executed. It will <strong>always</strong> be executed. The first argument to the handler will be <code>true</code> if the condition was met, or <code>false</code> if the operation timed-out, any additional parameters provided to <code>waitforcondition()</code> will be passed after that.
 	</li>
 	
 	<li>
-	  ...: additional parameters passed on to both the <code>condition()</code> and <code>handler()</code> functions.
+	  <code><em>...</em></code>: additional parameters passed on to both the <code>condition()</code> and <code>handler()</code> functions.
 	</li>
 	
 </ul>
@@ -629,15 +732,25 @@ Executes a handler function after a specific condition has been met (non-blockin
 
 
 
-<h3>Usage:</h3>
-<pre class=example>
-local count = 1<br/>function check(param)<br/>&nbsp&nbsp&nbsp&nbspprint("Check count ", count, ". Called using param = ", param)<br/>&nbsp&nbsp&nbsp&nbspcount = count + 1<br/>&nbsp&nbsp&nbsp&nbspreturn (count == 10)<br/>end<br/>&nbsp<br/>function done(conditionmet, param)<br/>&nbsp&nbsp&nbsp&nbspif conditionmet then<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspprint("The condition was met when count reached ", count - 1,". Called using param = ", param)<br/>&nbsp&nbsp&nbsp&nbspelse<br/>&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspprint("Failed, condition was not met. Called using param = ", param)<br/>&nbsp&nbsp&nbsp&nbspend<br/>end<br/>&nbsp<br/>copas.waitforcondition(0.1, 5, check, done, "1234567890")
-</pre>
+
+<div>
 
 
-
-<h3>Return value:</h3>
+<h3 class="inline-block">Return value:</h3>
 timer that verifies the condition.
+
+</div>
+
+
+
+ 
+<div>
+
+<h3 class="inline-block">Example:</h3>
+<pre class="example">local count = 1<br/>function check(param)<br/>&nbsp;&nbsp;&nbsp;&nbsp;print("Check count ", count, ". Called using param = ", param)<br/>&nbsp;&nbsp;&nbsp;&nbsp;count = count + 1<br/>&nbsp;&nbsp;&nbsp;&nbsp;return (count == 10)<br/>end<br/>&nbsp<br/>function done(conditionmet, param)<br/>&nbsp;&nbsp;&nbsp;&nbsp;if conditionmet then<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print("The condition was met when count reached ", count - 1,". Called using param = ", param)<br/>&nbsp;&nbsp;&nbsp;&nbsp;else<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print("Failed, condition was not met. Called using param = ", param)<br/>&nbsp;&nbsp;&nbsp;&nbsp;end<br/>end<br/>&nbsp<br/>copas.waitforcondition(0.1, 5, check, done, "1234567890")</pre>
+
+</div>
+
 
 
 
@@ -651,15 +764,15 @@ timer that verifies the condition.
 Arms a previously created timer. When <code>arm()</code> is called on an already armed timer then the timer will be rescheduled, the <code>cancel</code> handler will not be called in this case, but the <code>arm</code> handler will run.
 
 
-<h3>Parameters</h3>
+<h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  self: 
+	  <code><em>self</em></code>: 
 	</li>
 	
 	<li>
-	  interval: the interval after which the timer expires (in seconds). This must be set with the first call to <code>arm()</code> any additional calls will reuse the existing interval if no new interval is provided.
+	  <code><em>interval</em></code>: the interval after which the timer expires (in seconds). This must be set with the first call to <code>arm()</code> any additional calls will reuse the existing interval if no new interval is provided.
 	</li>
 	
 </ul>
@@ -667,30 +780,44 @@ Arms a previously created timer. When <code>arm()</code> is called on an already
 
 
 
-<h3>Usage:</h3>
-<pre class=example>
--- Create a new timer<br/>local t = copas.newtimer(nil, function () print("hello world") end, nil, false)<br/>t:arm(5)              -- arm it at 5 seconds<br/>t:cancel()            -- cancel it again
-</pre>
+
+<div>
 
 
-
-<h3>Return value:</h3>
+<h3 class="inline-block">Return value:</h3>
 the timer <code>t</code>
 
+</div>
 
+
+
+ 
+<div>
+
+<h3 class="inline-block">Example:</h3>
+<pre class="example">-- Create a new timer<br/>local t = copas.newtimer(nil, function () print("hello world") end, nil, false)<br/>t:arm(5)              -- arm it at 5 seconds<br/>t:cancel()            -- cancel it again</pre>
+
+</div>
+
+
+
+<div>
 
 <h3>See also:</h3>
 <ul>
 	
 	<li><a href="../../files/copas/timer.html#t:cancel">
 		t:cancel
-	</a>
+	</a></li>
 	
 	<li><a href="../../files/copas/timer.html#copas.newtimer">
 		copas.newtimer
-	</a>
+	</a></li>
 	
 </ul>
+
+</div>
+
 
 </dd>
 
@@ -702,11 +829,11 @@ the timer <code>t</code>
 Cancels a previously armed timer. This will run the <code>cancel</code> handler provided when creating the timer.
 
 
-<h3>Parameters</h3>
+<h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  self: 
+	  <code><em>self</em></code>: 
 	</li>
 	
 </ul>
@@ -714,37 +841,41 @@ Cancels a previously armed timer. This will run the <code>cancel</code> handler 
 
 
 
-<h3>Usage:</h3>
-<pre class=example>
--- Create a new timer<br/>local t = copas.newtimer(nil, function () print("hello world") end, nil, false)<br/>t:arm(5)              -- arm it at 5 seconds<br/>t:cancel()            -- cancel it again
-</pre>
 
 
 
+ 
+<div>
 
+<h3 class="inline-block">Example:</h3>
+<pre class="example">-- Create a new timer<br/>local t = copas.newtimer(nil, function () print("hello world") end, nil, false)<br/>t:arm(5)              -- arm it at 5 seconds<br/>t:cancel()            -- cancel it again</pre>
+
+</div>
+
+
+
+<div>
 
 <h3>See also:</h3>
 <ul>
 	
 	<li><a href="../../files/copas/timer.html#t:arm">
 		t:arm
-	</a>
+	</a></li>
 	
 	<li><a href="../../files/copas/timer.html#copas.newtimer">
 		copas.newtimer
-	</a>
+	</a></li>
 	
 </ul>
+
+</div>
+
 
 </dd>
 
 
 </dl>
-
-
-
-
-
 
 
 </div> <!-- id="content" -->
