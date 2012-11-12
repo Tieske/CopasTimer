@@ -54,7 +54,7 @@ local decor = {
     -- @see s.events
     -- @see decorate
     -- @see serverdispatch
-    -- @usage# -- create an object and decorate it with event capabilities
+    -- @example# -- create an object and decorate it with event capabilities
     -- local obj1 = {}
     -- copas.eventer.decorate(obj1, { "start", "error", "stop" } )
     -- &nbsp
@@ -80,7 +80,7 @@ local decor = {
     -- @see s.events
     -- @see decorate
     -- @see clientsubscribe
-    -- @usage# -- create an object and decorate it with event capabilities
+    -- @example# -- create an object and decorate it with event capabilities
     -- local obj1 = {}
     -- copas.eventer.decorate(obj1, { "start", "error", "stop" } )
     -- &nbsp
@@ -495,7 +495,7 @@ copas.eventer = {
     -- @return <code>nil</code> if the server is unregistered, otherwise a table
     -- with subscriptions. The result table is keyed by 'event string' and each value
     -- is a list of clients that is subscribed to this event.
-    -- @usage# local list = copas.eventer.getclients(copas)     -- get list of Copas clients
+    -- @example# local list = copas.eventer.getclients(copas)     -- get list of Copas clients
     -- list = list[copas.events.loopstarted]            -- get clients of the 'loopstarted' event
     -- print ("the Copas 'loopstarted' event has " .. #list .. " clients subscribed.")
     getclients = function(server)
