@@ -1,10 +1,14 @@
 #Copas Timer
 Copas Timer is free software under the MIT/X11 license.  
-Copyright 2011-2012 Thijs Schreijer
+Copyright 2011-2013 Thijs Schreijer
 
 [Documentation](http://tieske.github.com/CopasTimer/) and [sourcecode](http://github.com/Tieske/CopasTimer) are on GitHub
 
 ##Changelog;
+###xx-xxx-2013; release 0.4.3
+- `eventer.decorate()` function now protects access to `events` table so invalid events throw an error
+- fixed bug in timer errorhandler function
+
 ###04-Jun-2012; release 0.4.2
 - fixed undefined behaviour when arming an already armed timer
 - removed default 1 second interval, now throws an error if the first call to `arm()` does not provide an interval.

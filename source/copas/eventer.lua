@@ -19,8 +19,8 @@ setmetatable(clients, {__mode = "k"})   -- client table weak keys
 -- The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for
 -- the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.<br/>
 -- <br/>This module is part of Copas Timer and is free software under the MIT/X11 license.
--- @copyright 2011-2012 Thijs Schreijer
--- @release Version 0.4.2, Timer module to extend Copas with a timer and worker capability
+-- @copyright 2011-2013 Thijs Schreijer
+-- @release Version 0.4.3, Timer module to extend Copas with a timer and worker capability
 
 
 -------------------------------------------------------------------------------
@@ -54,7 +54,7 @@ local decor = {
     -- @see s.events
     -- @see decorate
     -- @see serverdispatch
-    -- @example# -- create an object and decorate it with event capabilities
+    -- @usage# -- create an object and decorate it with event capabilities
     -- local obj1 = {}
     -- copas.eventer.decorate(obj1, { "start", "error", "stop" } )
     -- &nbsp
@@ -80,7 +80,7 @@ local decor = {
     -- @see s.events
     -- @see decorate
     -- @see clientsubscribe
-    -- @example# -- create an object and decorate it with event capabilities
+    -- @usage# -- create an object and decorate it with event capabilities
     -- local obj1 = {}
     -- copas.eventer.decorate(obj1, { "start", "error", "stop" } )
     -- &nbsp
@@ -450,6 +450,15 @@ copas.eventer = {
         for k,v in pairs(events) do
             ev[v] = v
         end
+        setmetatable(ev, {
+            __index = function(t, key)
+            local val = rawget(t, key)
+            if not val then
+              error("'"..tostring(key).."' is not a valid event in this set", 2)
+            end
+            return val
+          end
+          })
 
         -- decorate server table with the eventlist and the functions
         server.events = ev
@@ -495,7 +504,7 @@ copas.eventer = {
     -- @return <code>nil</code> if the server is unregistered, otherwise a table
     -- with subscriptions. The result table is keyed by 'event string' and each value
     -- is a list of clients that is subscribed to this event.
-    -- @example# local list = copas.eventer.getclients(copas)     -- get list of Copas clients
+    -- @usage# local list = copas.eventer.getclients(copas)     -- get list of Copas clients
     -- list = list[copas.events.loopstarted]            -- get clients of the 'loopstarted' event
     -- print ("the Copas 'loopstarted' event has " .. #list .. " clients subscribed.")
     getclients = function(server)
