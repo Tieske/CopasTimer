@@ -5,7 +5,7 @@ Copyright 2011-2013 Thijs Schreijer
 [Documentation](http://tieske.github.com/CopasTimer/) and [sourcecode](http://github.com/Tieske/CopasTimer) are on GitHub
 
 ##Changelog;
-###xx-xxx-2013; release 0.4.3
+###07-Mar-2013; release 0.4.3
 - `eventer.decorate()` function now protects access to `events` table so invalid events throw an error
 - fixed bug in timer errorhandler function
 

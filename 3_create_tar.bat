@@ -8,7 +8,7 @@ set my_version=0.4.3
 set my_rsrev=1
 set my_name=copastimer
 set my_dir=distr
-set my_filelist=doc source test rockspec readme.txt
+set my_filelist=doc source test rockspec readme.md
 rem ===============================================================
 
 echo Creating distribution files;
