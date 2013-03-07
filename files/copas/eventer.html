@@ -63,10 +63,10 @@
 
 
 
-<p>Copyright &copy; 2011-2012 Thijs Schreijer</p>
+<p>Copyright &copy; 2011-2013 Thijs Schreijer</p>
 
 
-<p><small><b>Release:</b> Version 0.4.2, Timer module to extend Copas with a timer and worker capability</small></p>
+<p><small><b>Release:</b> Version 0.4.3, Timer module to extend Copas with a timer and worker capability</small></p>
 
 
 
@@ -600,6 +600,13 @@ Gets a list of clients of a particular server.
 
 
 
+<div>
+
+<h3 class="inline-block">Usage:</h3>
+local list = copas.eventer.getclients(copas)     -- get list of Copas clients<br/>list = list[copas.events.loopstarted]            -- get clients of the 'loopstarted' event<br/>print ("the Copas 'loopstarted' event has " .. #list .. " clients subscribed.")
+
+</div>
+
 
 
 <div>
@@ -612,13 +619,6 @@ Gets a list of clients of a particular server.
 
 
 
- 
-<div>
-
-<h3 class="inline-block">Example:</h3>
-<pre class="example">local list = copas.eventer.getclients(copas)     -- get list of Copas clients<br/>list = list[copas.events.loopstarted]            -- get clients of the 'loopstarted' event<br/>print ("the Copas 'loopstarted' event has " .. #list .. " clients subscribed.")</pre>
-
-</div>
 
 
 
@@ -689,17 +689,17 @@ Dispatches an event for this server. It functions as a shortcut to <code>serverd
 
 
 
-
-
-
-
- 
 <div>
 
-<h3 class="inline-block">Example:</h3>
-<pre class="example">-- create an object and decorate it with event capabilities<br/>local obj1 = {}<br/>copas.eventer.decorate(obj1, { "start", "error", "stop" } )<br/>&nbsp<br/>..... do some stuff, subscribe to events, start the copas loop, etc.<br/>&nbsp<br/>-- raise the start event and include th starttime as an extra<br/>-- parameter to be passed to the eventhandlers<br/>local e = obj1:dispatch(obj1.events.start, socket.gettime())<br/>-- now wait for the event to be completely handled<br/>e:waitfor()</pre>
+<h3 class="inline-block">Usage:</h3>
+-- create an object and decorate it with event capabilities<br/>local obj1 = {}<br/>copas.eventer.decorate(obj1, { "start", "error", "stop" } )<br/>&nbsp<br/>..... do some stuff, subscribe to events, start the copas loop, etc.<br/>&nbsp<br/>-- raise the start event and include th starttime as an extra<br/>-- parameter to be passed to the eventhandlers<br/>local e = obj1:dispatch(obj1.events.start, socket.gettime())<br/>-- now wait for the event to be completely handled<br/>e:waitfor()
 
 </div>
+
+
+
+
+
 
 
 
@@ -791,17 +791,17 @@ Subscribes a client to the events of this server. It functions as a shortcut to 
 
 
 
-
-
-
-
- 
 <div>
 
-<h3 class="inline-block">Example:</h3>
-<pre class="example">-- create an object and decorate it with event capabilities<br/>local obj1 = {}<br/>copas.eventer.decorate(obj1, { "start", "error", "stop" } )<br/>&nbsp<br/>-- create another object and subscribe to events of obj1<br/>local obj2 = {<br/>&nbsp;&nbsp;&nbsp;&nbsp;eventhandler = function(self, sender, event, ...)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print ("received event: " .. event)<br/>&nbsp;&nbsp;&nbsp;&nbsp;end<br/>}<br/>obj1:subscribe(obj2, obj1.events.stop)<br/>&nbsp<br/>..... do some stuff, start the copas loop, etc.<br/>&nbsp<br/>-- raise the stop event<br/>local e = obj1:dispatch(obj1.events.stop)</pre>
+<h3 class="inline-block">Usage:</h3>
+-- create an object and decorate it with event capabilities<br/>local obj1 = {}<br/>copas.eventer.decorate(obj1, { "start", "error", "stop" } )<br/>&nbsp<br/>-- create another object and subscribe to events of obj1<br/>local obj2 = {<br/>&nbsp;&nbsp;&nbsp;&nbsp;eventhandler = function(self, sender, event, ...)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print ("received event: " .. event)<br/>&nbsp;&nbsp;&nbsp;&nbsp;end<br/>}<br/>obj1:subscribe(obj2, obj1.events.stop)<br/>&nbsp<br/>..... do some stuff, start the copas loop, etc.<br/>&nbsp<br/>-- raise the stop event<br/>local e = obj1:dispatch(obj1.events.stop)
 
 </div>
+
+
+
+
+
 
 
 
