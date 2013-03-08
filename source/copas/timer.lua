@@ -17,13 +17,7 @@
 -- and can be yielded if they take too long, but are less precisely timed.<br/>
 -- <br/>The workers are dispatched from a rotating queue, so when a worker is up to run
 -- it will be removed from the queue, resumed, and (if not finished) added at the end
--- of the queue again.
--- <br/><strong>Important:</strong> the workers should never wait for work to come in. They must
--- exit when done. New work should create a new worker. The reason is that while
--- there are worker threads available the luasocket <code>select</code> statement is called
--- with a 0 timeout (non-blocking) to make sure background work is completed asap.
--- If a worker waits for work (call <code>yield()</code> when it has nothing to do)
--- it will create a busy-wait situation.<br/>
+-- of the queue again.<br/>
 -- <br/>Copas Timer is free software under the MIT/X11 license.
 -- @copyright 2011-2013 Thijs Schreijer
 -- @release Version 0.4.3, Timer module to extend Copas with a timer and worker capability
@@ -37,7 +31,8 @@ local timers = {}		-- table with running timers by their id
 local order = nil		-- linked list with running timers sorted by expiry time, 'order' being the first to expire
 local PRECISION = 0.02  -- default precision value
 local TIMEOUT = 5       -- default timeout value
-local workers = {}      -- list with background worker threads
+local activeworkers = {}        -- list with background worker threads, currently scheduled
+local inactiveworkers = {}      -- table with background workers, currently inactive, indexed by the thread
 local copasstep = copas.step    -- store original function
 local copasloop = copas.loop    -- store original function
 local exiting           -- indicator of loop status
@@ -107,31 +102,33 @@ local _missingerrorhandler = function(...)
 end
 
 -------------------------------------------------------------------------------
--- Adds a background worker to the end of the thread list
+-- Adds a background worker to the end of the active thread list. Removes it
+-- simultaneously from the inactive list.
 -- @param t thread table (see copas.addworker()) to add to the list
 local pushthread = function(t)
-    table.insert(workers, t)
+    table.insert(activeworkers, t)
+    inactiveworkers[t.thread] = nil  -- remove to be sure
 end
 
 -------------------------------------------------------------------------------
--- Pops background worker from the thread list
+-- Pops background worker from the active thread list
 -- @param t thread table (see copas.addworker()) or actual thread (coroutine)
 -- to remove from the list. If nil then just the one on top will be popped.
 -- @return the popped thread table, or nil if it wasn't found
 local popthread = function(t)
-    if #workers == 0 then
+    if #activeworkers == 0 then
         return nil
     end
 
     if not t then
         -- get the first one
-        return table.remove(workers, 1)
+        return table.remove(activeworkers, 1)
     else
         -- specific one specified, have to go look for it
-        for i, v in ipairs(workers) do
+        for i, v in ipairs(activeworkers) do
             if v == t or v.thread == t then
                 -- found it, return it
-                return table.remove(workers, i)
+                return table.remove(activeworkers, i)
             end
         end
         -- wasn't found
@@ -151,15 +148,16 @@ end
 --     print ("No background worker found, so I'm on my own")
 -- end
 copas.getworker = function(t)
-    if #workers == 0 then
-        return nil
-    end
-
     if not t then
         return nil
     else
         -- specific one specified, have to go look for it
-        for i, v in ipairs(workers) do
+        -- check inactive list
+        if inactiveworkers[t] then
+            return inactiveworkers[t]
+        end
+        -- look in active list
+        for _, v in ipairs(activeworkers) do
             if v == t or v.thread == t then
                 -- found it, return it
                 return v
@@ -183,8 +181,24 @@ end
 copas.removeworker = function(t)
     if t then
         if popthread(t) then
-            return true -- succeeded
+            return true -- succeeded, was in active list
         else
+            -- check inactive list
+            if type(t) == "table" then
+                if inactiveworkers[t.thread] then
+                    -- its a workertable in the inactive list
+                    inactiveworkers[t.thread] = nil
+                    return true
+                end
+            else
+                if inactiveworkers[t] then
+                    -- its a worker coroutine in the inactive list
+                    inactiveworkers[t] = nil
+                    return true
+                end
+            end
+            
+            -- check running worker
             if not runningworker then
                 return false    -- not found
             else
@@ -202,27 +216,95 @@ end
 
 -------------------------------------------------------------------------------
 -- Adds a worker thread. The threads will be executed when there is no IO nor
--- any expiring timer to run. The <code>args</code> key of the returned table can be modified
--- while the thread is still scheduled. After the <code>args</code> have been passed to
--- <code>resume</code> the <code>args</code> will be set to <code>nil</code>. If <code>args</code> is set again, then the
--- next time the thread is up to run, the new set of <code>args</code> will be passed on to the
--- thread. This enables feeding the thread with data.
--- @param func function to execute in the coroutine
--- @param args table with arguments for the function
+-- any expiring timer to run. The function will be started immediately upon
+-- creating the coroutine for the worker. Calling <code>w:push(data)</code> on 
+-- the returned worker table will enqueue data to be handled. The function can
+-- fetch data from the queue through <code>coroutine.yield()</code> which will
+-- pop a new element from the queue. For lengthy operations where the code needs
+-- to yield without popping a new element from the queue, call <code>coroutine.yield(true)</code>.
+-- This will return the same element as before, so no new element will be 
+-- popped from the queue.
+-- @param func function to execute as the coroutine
 -- @param errhandler function to handle any errors returned
--- @return table with keys <code>thread, args, errhandler</code>
+-- @return table with keys <code>thread, errhandler and push(self, data)</code>
 -- @see copas.removeworker
--- @example# copas.addworker(function(...)
---         local t = {...}
---         print(table.concat(t, " "))
---     end, { "Hello", "world" })
-copas.addworker = function(func, args, errhandler)
-    local t = {
+-- @example# local w = copas.addworker(function(queue)
+--         -- do some initializing here...
+--         while true do
+--             data = queue:pop()    -- fetch data from queue, implictly yields the coroutine
+--             -- handle the retrieved data here
+--             print(data)
+--             -- do some lengthy stuff
+--             queue:pause()         -- implicitly yields
+--             -- do more lengthy stuff
+--         end
+--     end)
+-- -- enqueue data for the new worker
+-- w:push("here is some data")
+copas.addworker = function(func, errhandler)
+    local t
+    t = {
+        ------------------------------------------------------
+        -- Holds the thread/coroutine for this worker.
+        -- @name w.thread
+        -- @class field
         thread = coroutine.create(func),
-        args = args,
+        ------------------------------------------------------
+        -- Holds the errorhandler for this worker.
+        -- @name w.errhandler
+        -- @class field
         errhandler = errhandler or _missingerrorhandler,
+        queue = {},
+        ------------------------------------------------------
+        -- Adds data to the worker queue. Note that this method
+        -- returns the worker table, to facilitate chaining upon creating
+        -- a worker.
+        -- @name w.push
+        -- @param self The worker table
+        -- @param data Data to be added to the queue of the worker
+        -- @return the worker table
+        -- @example# local w = copas.addworker(myfunc):push("some data")
+        -- -- which is equivalent to
+        -- local w = copas.addworker(myfunc)
+        -- w:push("some data")
+        push = function(self, data)
+                table.insert(t.queue, data)
+                if #t.queue > 0 then
+                    if t ~= runningworker then
+                        -- move thread to active, only if not active, active will be reinserted by dowork()
+                        pushthread(t)
+                    end  
+                end
+                return t  -- return thread table, so: local w = copas.addworker(myfunc):push("some data") still works
+            end,
+        ------------------------------------------------------
+        -- Retrieves data from the worker queue. Note that this method
+        -- implicitly yields the coroutine until new data is available
+        -- in the queue.
+        -- @name w.pop
+        -- @param self The worker table
+        -- @return next data element popped from the queue
+        pop = function(self)
+                -- pop called only when own thread is the running thread, do dowork() will reinsert where applicable
+                assert(coroutine.running == self.thread,"pop() may only be called by the workerthread itself")
+                coroutine.yield()
+                return table.remove(t.queue, 1)
+            end,
+        ------------------------------------------------------
+        -- Yields control in case of lengthy operations.
+        -- @name w.pause
+        -- @param self The worker table
+        -- @return <code>true</code>
+        pause = function(self)
+                assert(coroutine.running == self.thread,"pause() may only be called by the workerthread itself")
+                table.insert(t.queue,1,true)  -- insert fake element
+                coroutine.yield()
+                return table.remove(t.queue, 1) -- returns the fake element; true
+            end,
     }
-    pushthread(t)
+    -- initialize coroutine by resuming, and store in list (queue empty, so inactive)
+    coroutine.resume(t.thread,t)
+    inactiveworkers[t.thread] = t
     return t
 end
 
@@ -239,23 +321,26 @@ local dowork = function()
     end
     if t then
         -- execute this thread
-        t.args = t.args or {}
         runningworker = t
-        local success, err = coroutine.resume(t.thread, unpack(t.args))
+        local success, err = coroutine.resume(t.thread)
         runningworker = nil
         if not success then
-            t.errhandler(nil, err)
+            pcall(t.errhandler, nil, err)
         end
         if coroutine.status(t.thread) ~= "dead" then
-            t.args = nil    -- handled those, so drop them
             if not t._hasbeenremoved then -- double check the worker didn't remove itself
-                pushthread(t)   -- add thread to end of queue again for next run
+                if #t.queue > 0 then
+                    pushthread(t)   -- add thread to end of queue again for next run
+                else
+                    -- nothing in queue, so move to inactive list
+                    inactiveworkers[t.thread] = t
+                end
             else
                 t._hasbeenremoved = nil
             end
         end
     end
-    return (#workers > 0)
+    return (#activeworkers > 0)
 end
 
 -------------------------------------------------------------------------------
@@ -277,7 +362,7 @@ local timercheck = function(precision)
     end
 
     -- When is the next piece of work to be done
-    if #workers ~= 0 then
+    if #activeworkers ~= 0 then
         result = 0  -- resume asap to get work done
     else
         if order then
@@ -525,7 +610,7 @@ copas.loop = function (timeout, precision)
                 startexittimer()
             end
             -- do we still have workers to complete?
-            if not next(workers) then
+            if not next(activeworkers) then
                 -- so we're exiting and the workers are all done, we're ready to exit
                 exitingnow = true
             end
@@ -550,7 +635,7 @@ copas.loop = function (timeout, precision)
         if copas.eventer then
             -- raise event, add workers table as eventdata to inform about unfinished worker threads
             -- run threads until complete, no sockets, no timers, no workers, just the event threads
-            copas:dispatch(copas.events.loopstopped, workers):finish()
+            copas:dispatch(copas.events.loopstopped, activeworkers):finish()
         end
     end
     exiting = nil

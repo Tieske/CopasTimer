@@ -59,7 +59,7 @@
 <h1>File "<code>copas/timer.lua</code>"</h1>
 
 
-<p>Copas Timer is a module that adds a timer capability to the Copas scheduler. It provides the same base functions <code>step</code> and <code>loop</code> as Copas (it actually replaces them) except that it will also check for (and run) timers expiring and run background workers if there is no IO or timer to handle. It also adds an <code>exitloop</code> method that allows for a controlled exit from the loop.<br/>&nbsp;<br/>To use the module, make sure to 'require' copastimer before any other code 'requires' copas. This will make sure that the copas version in use will be updated before any other code uses it. The changes should be transparent to your existing code. It should be required as; <code>local copas = require("copas.timer")</code> because it returns the global <code>copas</code> table and not a separate timer table.<br/>&nbsp;<br/>There is a difference between the 2 background mechanisms provided; the timers run on the main loop, they should never yield and return quickly, but they are precise. On the other hand the workers run in their own thread (coroutine) and can be yielded if they take too long, but are less precisely timed.<br/>&nbsp;<br/>The workers are dispatched from a rotating queue, so when a worker is up to run it will be removed from the queue, resumed, and (if not finished) added at the end of the queue again. <br/><strong>Important:</strong> the workers should never wait for work to come in. They must exit when done. New work should create a new worker. The reason is that while there are worker threads available the luasocket <code>select</code> statement is called with a 0 timeout (non-blocking) to make sure background work is completed asap. If a worker waits for work (call <code>yield()</code> when it has nothing to do) it will create a busy-wait situation.<br/>&nbsp;<br/>Copas Timer is free software under the MIT/X11 license.</p>
+<p>Copas Timer is a module that adds a timer capability to the Copas scheduler. It provides the same base functions <code>step</code> and <code>loop</code> as Copas (it actually replaces them) except that it will also check for (and run) timers expiring and run background workers if there is no IO or timer to handle. It also adds an <code>exitloop</code> method that allows for a controlled exit from the loop.<br/>&nbsp;<br/>To use the module, make sure to 'require' copastimer before any other code 'requires' copas. This will make sure that the copas version in use will be updated before any other code uses it. The changes should be transparent to your existing code. It should be required as; <code>local copas = require("copas.timer")</code> because it returns the global <code>copas</code> table and not a separate timer table.<br/>&nbsp;<br/>There is a difference between the 2 background mechanisms provided; the timers run on the main loop, they should never yield and return quickly, but they are precise. On the other hand the workers run in their own thread (coroutine) and can be yielded if they take too long, but are less precisely timed.<br/>&nbsp;<br/>The workers are dispatched from a rotating queue, so when a worker is up to run it will be removed from the queue, resumed, and (if not finished) added at the end of the queue again.<br/>&nbsp;<br/>Copas Timer is free software under the MIT/X11 license.</p>
 
 
 
@@ -76,7 +76,7 @@
 <table class="function_list">
 
     <tr>
-    <td class="name" nowrap><a href="#copas.addworker">copas.addworker</a>&nbsp;(func, args, errhandler)</td>
+    <td class="name" nowrap><a href="#copas.addworker">copas.addworker</a>&nbsp;(func, errhandler)</td>
     <td class="summary">Adds a worker thread.</td>
     </tr>
 
@@ -140,6 +140,21 @@
     <td class="summary">Cancels a previously armed timer.</td>
     </tr>
 
+    <tr>
+    <td class="name" nowrap><a href="#w.pause">w.pause</a>&nbsp;(self)</td>
+    <td class="summary">Yields control in case of lengthy operations.</td>
+    </tr>
+
+    <tr>
+    <td class="name" nowrap><a href="#w.pop">w.pop</a>&nbsp;(self)</td>
+    <td class="summary">Retrieves data from the worker queue.</td>
+    </tr>
+
+    <tr>
+    <td class="name" nowrap><a href="#w.push">w.push</a>&nbsp;(self, data)</td>
+    <td class="summary">Adds data to the worker queue.</td>
+    </tr>
+
 </table>
 
 
@@ -154,20 +169,16 @@
 
 
 
-<dt><a name="copas.addworker"></a><strong>copas.addworker</strong>&nbsp;(func, args, errhandler)</dt>
+<dt><a name="copas.addworker"></a><strong>copas.addworker</strong>&nbsp;(func, errhandler)</dt>
 <dd>
-Adds a worker thread. The threads will be executed when there is no IO nor any expiring timer to run. The <code>args</code> key of the returned table can be modified while the thread is still scheduled. After the <code>args</code> have been passed to <code>resume</code> the <code>args</code> will be set to <code>nil</code>. If <code>args</code> is set again, then the next time the thread is up to run, the new set of <code>args</code> will be passed on to the thread. This enables feeding the thread with data.
+Adds a worker thread. The threads will be executed when there is no IO nor any expiring timer to run. The function will be started immediately upon creating the coroutine for the worker. Calling <code>w:push(data)</code> on the returned worker table will enqueue data to be handled. The function can fetch data from the queue through <code>coroutine.yield()</code> which will pop a new element from the queue. For lengthy operations where the code needs to yield without popping a new element from the queue, call <code>coroutine.yield(true)</code>. This will return the same element as before, so no new element will be popped from the queue.
 
 
 <h3>Parameters:</h3>
 <ul>
 	
 	<li>
-	  <code><em>func</em></code>: function to execute in the coroutine
-	</li>
-	
-	<li>
-	  <code><em>args</em></code>: table with arguments for the function
+	  <code><em>func</em></code>: function to execute as the coroutine
 	</li>
 	
 	<li>
@@ -184,7 +195,7 @@ Adds a worker thread. The threads will be executed when there is no IO nor any e
 
 
 <h3 class="inline-block">Return value:</h3>
-table with keys <code>thread, args, errhandler</code>
+table with keys <code>thread, errhandler and push(self, data)</code>
 
 </div>
 
@@ -194,7 +205,7 @@ table with keys <code>thread, args, errhandler</code>
 <div>
 
 <h3 class="inline-block">Example:</h3>
-<pre class="example">copas.addworker(function(...)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;local t = {...}<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print(table.concat(t, " "))<br/>&nbsp;&nbsp;&nbsp;&nbsp;end, { "Hello", "world" })</pre>
+<pre class="example">local w = copas.addworker(function(queue)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- do some initializing here...<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;while true do<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = queue:pop()    -- fetch data from queue, implictly yields the coroutine<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- handle the retrieved data here<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print(data)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- do some lengthy stuff<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;queue:pause()         -- implicitly yields<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- do more lengthy stuff<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;end<br/>&nbsp;&nbsp;&nbsp;&nbsp;end)<br/>-- enqueue data for the new worker<br/>w:push("here is some data")</pre>
 
 </div>
 
@@ -870,6 +881,128 @@ Cancels a previously armed timer. This will run the <code>cancel</code> handler 
 </ul>
 
 </div>
+
+
+</dd>
+
+
+
+
+<dt><a name="w.pause"></a><strong>w.pause</strong>&nbsp;(self)</dt>
+<dd>
+Yields control in case of lengthy operations.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>self</em></code>: The worker table
+	</li>
+	
+</ul>
+
+
+
+
+
+<div>
+
+
+<h3 class="inline-block">Return value:</h3>
+<code>true</code>
+
+</div>
+
+
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="w.pop"></a><strong>w.pop</strong>&nbsp;(self)</dt>
+<dd>
+Retrieves data from the worker queue. Note that this method implicitly yields the coroutine until new data is available in the queue.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>self</em></code>: The worker table
+	</li>
+	
+</ul>
+
+
+
+
+
+<div>
+
+
+<h3 class="inline-block">Return value:</h3>
+next data element popped from the queue
+
+</div>
+
+
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="w.push"></a><strong>w.push</strong>&nbsp;(self, data)</dt>
+<dd>
+Adds data to the worker queue. Note that this method returns the worker table, to facilitate chaining upon creating a worker.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>self</em></code>: The worker table
+	</li>
+	
+	<li>
+	  <code><em>data</em></code>: Data to be added to the queue of the worker
+	</li>
+	
+</ul>
+
+
+
+
+
+<div>
+
+
+<h3 class="inline-block">Return value:</h3>
+the worker table
+
+</div>
+
+
+
+ 
+<div>
+
+<h3 class="inline-block">Example:</h3>
+<pre class="example">local w = copas.addworker(myfunc):push("some data")<br/>-- which is equivalent to<br/>local w = copas.addworker(myfunc)<br/>w:push("some data")</pre>
+
+</div>
+
+
 
 
 </dd>
