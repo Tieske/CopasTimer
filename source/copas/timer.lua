@@ -268,14 +268,12 @@ copas.addworker = function(func, errhandler)
         -- local w = copas.addworker(myfunc)
         -- w:push("some data")
         push = function(self, data)
-                table.insert(t.queue, data)
-                if #t.queue > 0 then
-                    if t ~= runningworker then
-                        -- move thread to active, only if not active, active will be reinserted by dowork()
-                        pushthread(t)
-                    end  
-                end
-                return t  -- return thread table, so: local w = copas.addworker(myfunc):push("some data") still works
+                table.insert(self.queue, data)
+                if t ~= runningworker then
+                    -- move worker to activelist, only if not active, active will be reinserted by dowork()
+                    pushthread(self)
+                end  
+                return self  -- return thread table, so: local w = copas.addworker(myfunc):push("some data") still works
             end,
         ------------------------------------------------------
         -- Retrieves data from the worker queue. Note that this method
@@ -286,9 +284,9 @@ copas.addworker = function(func, errhandler)
         -- @return next data element popped from the queue
         pop = function(self)
                 -- pop called only when own thread is the running thread, do dowork() will reinsert where applicable
-                assert(coroutine.running == self.thread,"pop() may only be called by the workerthread itself")
+                assert(coroutine.running() == self.thread,"pop() may only be called by the workerthread itself")
                 coroutine.yield()
-                return table.remove(t.queue, 1)
+                return table.remove(self.queue, 1)
             end,
         ------------------------------------------------------
         -- Yields control in case of lengthy operations.
@@ -296,14 +294,15 @@ copas.addworker = function(func, errhandler)
         -- @param self The worker table
         -- @return <code>true</code>
         pause = function(self)
-                assert(coroutine.running == self.thread,"pause() may only be called by the workerthread itself")
-                table.insert(t.queue,1,true)  -- insert fake element
+                assert(coroutine.running() == self.thread,"pause() may only be called by the workerthread itself")
+                table.insert(self.queue,1,true)  -- insert fake element
                 coroutine.yield()
-                return table.remove(t.queue, 1) -- returns the fake element; true
+                return table.remove(self.queue, 1) -- returns the fake element; true
             end,
     }
     -- initialize coroutine by resuming, and store in list (queue empty, so inactive)
-    coroutine.resume(t.thread,t)
+    local success, err = coroutine.resume(t.thread,t)
+    if not success then pcall(t.errhandler, nil, err) end
     inactiveworkers[t.thread] = t
     return t
 end

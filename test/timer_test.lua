@@ -15,6 +15,7 @@ end
 local w1 = 0
 local backgroundworker1 = function(queue)
     while true do
+--print("enetering w1")
 		local data = queue:pop()  -- new arguments will be passed to data for next loop
         w1=w1+1
         print("Worker 1 reporting " .. tostring(w1) .. ", with provided data: " .. tostring(data))
@@ -25,6 +26,7 @@ local t1 = copas.addworker(backgroundworker1):push("starting up")
 local w2 = 0
 local backgroundworker2 = function(queue)
     while true do
+--print("enetering w2")
         queue:pause()      -- do not accept argument
         w2=w2+1
         print("Worker 2 reporting " .. tostring(w2))
