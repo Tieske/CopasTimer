@@ -628,7 +628,7 @@ Removes a worker thread
 
 
 <h3 class="inline-block">Return value:</h3>
-<code>true</code> if success or <code>false</code> if it wasn't found
+thread table if success or <code>nil</code> if it wasn't found
 
 </div>
 
@@ -796,7 +796,7 @@ Arms a previously created timer. When <code>arm()</code> is called on an already
 
 
 <h3 class="inline-block">Return value:</h3>
-the timer <code>t</code>
+the timer <code>t</code>, which allows chaining creating/arming calls, see example.
 
 </div>
 
@@ -806,7 +806,7 @@ the timer <code>t</code>
 <div>
 
 <h3 class="inline-block">Example:</h3>
-<pre class="example">-- Create a new timer<br/>local t = copas.newtimer(nil, function () print("hello world") end, nil, false)<br/>t:arm(5)              -- arm it at 5 seconds<br/>t:cancel()            -- cancel it again</pre>
+<pre class="example">-- Create a new timer<br/>local f = function() print("hello world") end<br/>local t = copas.newtimer(nil, f, nil, false)<br/>t:arm(5)              -- arm it at 5 seconds<br/>-- which is equivalent to chaining the arm() call<br/>local t = copas.newtimer(nil, f, nil, false):arm(5)</pre>
 
 </div>
 

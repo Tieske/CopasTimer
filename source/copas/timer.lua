@@ -31,8 +31,6 @@ local timers = {}		-- table with running timers by their id
 local order = nil		-- linked list with running timers sorted by expiry time, 'order' being the first to expire
 local PRECISION = 0.02  -- default precision value
 local TIMEOUT = 5       -- default timeout value
-local activeworkers = {}        -- list with background worker threads, currently scheduled
-local inactiveworkers = {}      -- table with background workers, currently inactive, indexed by the thread
 local copasstep = copas.step    -- store original function
 local copasloop = copas.loop    -- store original function
 local exiting           -- indicator of loop status
@@ -41,58 +39,10 @@ local exiteventthreads  -- table with exit threads to be completed before exitin
 local exitcanceltimers  -- should timers be cancelled after ending the loop
 local exittimeout       -- timeout for workers to exit
 local exittimer         -- timerhandling the exit timeout
-local runningworker     -- the currently running worker table
-
-
--------------------------------------------------------------------------------
--- Remove an armed timer from the list of running timers
-local timerremove = function(t)
-    if t == order then order = t.next end
-    if t.previous then t.previous.next = t.next end
-    if t.next then t.next.previous = t.previous end
-	t.next = nil
-	t.previous = nil
-    if t.id then    -- fix: cancelling unarmed timer (no ID) error.
-        timers[t.id] = nil
-    end
-end
-
--------------------------------------------------------------------------------
--- Add a newly armed timer to the list of timers running
-local timeradd = function (t)
-    -- check existence
-    if t.id then
-        timerremove(t)
-    else
-        -- create ID
-        t.id = timerid
-        timerid = timerid + 1
-    end
-    -- store in id ordered list
-    timers[t.id]=t
-    -- store in expire-time ordered list
-    if not order then
-        -- list empty, just add
-        order=t
-        order.next = nil
-        order.previous = nil
-    elseif t.when < order.when then
-        -- insert at top of list
-        t.next = order
-        t.previous = nil
-        order.previous = t
-        order = t
-    else
-        local insertafter = order
-        while insertafter.next and (insertafter.next.when <= t.when) do
-            insertafter = insertafter.next
-        end
-        t.previous = insertafter
-        t.next = insertafter.next
-        insertafter.next = t
-        if t.next then t.next.previous = t end
-    end
-end
+-- worker data
+local activeworkers = {}        -- list with background worker threads, currently scheduled
+local inactiveworkers = {}      -- table with background workers, currently inactive, indexed by the thread
+local runningworker             -- the currently running worker table
 
 -------------------------------------------------------------------------------
 -- Will be used as error handler if none provided
@@ -100,6 +50,11 @@ local _missingerrorhandler = function(...)
 	print("Error in timer callback/worker thread : ",  ... )
     print(debug.traceback())
 end
+
+
+--=============================================================================
+--               BACKGROUND WORKERS
+--=============================================================================
 
 -------------------------------------------------------------------------------
 -- Adds a background worker to the end of the active thread list. Removes it
@@ -176,53 +131,54 @@ end
 -- Removes a worker thread
 -- @param t thread table (as returned by <code>copas.addworker()</code>), or actual thread
 -- to be removed.
--- @return <code>true</code> if success or <code>false</code> if it wasn't found
+-- @return thread table if success or <code>nil</code> if it wasn't found
 -- @see copas.addworker
 copas.removeworker = function(t)
     if t then
-        if popthread(t) then
-            return true -- succeeded, was in active list
+        local tt = popthread(t)
+        if tt then
+            return tt -- succeeded, was in active list
         else
             -- check inactive list
             if type(t) == "table" then
                 if inactiveworkers[t.thread] then
                     -- its a workertable in the inactive list
-                    inactiveworkers[t.thread] = nil
-                    return true
+                    tt, inactiveworkers[t.thread] = inactiveworkers[t.thread], nil
+                    return tt
                 end
             else
                 if inactiveworkers[t] then
                     -- its a worker coroutine in the inactive list
-                    inactiveworkers[t] = nil
-                    return true
+                    tt, inactiveworkers[t] = inactiveworkers[t], nil
+                    return tt
                 end
             end
-            
+
             -- check running worker
             if not runningworker then
-                return false    -- not found
+                return nil    -- not found
             else
                 -- we're currently being run from a worker, so check whether its that one being removed
                 if runningworker == t or runningworker.thread == t then
                     runningworker._hasbeenremoved = true
-                    return true
+                    return runningworker
                 end
             end
         end
     else
-        return false    -- not found
+        return nil    -- not found
     end
 end
 
 -------------------------------------------------------------------------------
 -- Adds a worker thread. The threads will be executed when there is no IO nor
 -- any expiring timer to run. The function will be started immediately upon
--- creating the coroutine for the worker. Calling <code>w:push(data)</code> on 
+-- creating the coroutine for the worker. Calling <code>w:push(data)</code> on
 -- the returned worker table will enqueue data to be handled. The function can
 -- fetch data from the queue through <code>coroutine.yield()</code> which will
 -- pop a new element from the queue. For lengthy operations where the code needs
 -- to yield without popping a new element from the queue, call <code>coroutine.yield(true)</code>.
--- This will return the same element as before, so no new element will be 
+-- This will return the same element as before, so no new element will be
 -- popped from the queue.
 -- @param func function to execute as the coroutine
 -- @param errhandler function to handle any errors returned
@@ -272,7 +228,7 @@ copas.addworker = function(func, errhandler)
                 if t ~= runningworker then
                     -- move worker to activelist, only if not active, active will be reinserted by dowork()
                     pushthread(self)
-                end  
+                end
                 return self  -- return thread table, so: local w = copas.addworker(myfunc):push("some data") still works
             end,
         ------------------------------------------------------
@@ -283,7 +239,6 @@ copas.addworker = function(func, errhandler)
         -- @param self The worker table
         -- @return next data element popped from the queue
         pop = function(self)
-                -- pop called only when own thread is the running thread, do dowork() will reinsert where applicable
                 assert(coroutine.running() == self.thread,"pop() may only be called by the workerthread itself")
                 coroutine.yield()
                 return table.remove(self.queue, 1)
@@ -295,9 +250,30 @@ copas.addworker = function(func, errhandler)
         -- @return <code>true</code>
         pause = function(self)
                 assert(coroutine.running() == self.thread,"pause() may only be called by the workerthread itself")
-                table.insert(self.queue,1,true)  -- insert fake element
+                table.insert(self.queue,1,true)  -- insert fake element; true
                 coroutine.yield()
                 return table.remove(self.queue, 1) -- returns the fake element; true
+            end,
+        -- perform a single step for this worker
+        step = function(self)
+              runningworker = self
+              local success, err = coroutine.resume(self.thread)
+              runningworker = nil
+              if not success then
+                  pcall(self.errhandler, nil, err)
+              end
+              if coroutine.status(self.thread) ~= "dead" then
+                  if not self._hasbeenremoved then -- double check the worker didn't remove itself
+                      if #self.queue > 0 then
+                          pushthread(self)   -- add thread to end of queue again for next run
+                      else
+                          -- nothing in queue, so move to inactive list
+                          inactiveworkers[self.thread] = self
+                      end
+                  else
+                      self._hasbeenremoved = nil
+                  end
+              end
             end,
     }
     -- initialize coroutine by resuming, and store in list (queue empty, so inactive)
@@ -309,8 +285,7 @@ end
 
 -------------------------------------------------------------------------------
 -- Runs work on background threads
--- @return <code>true</code> if threads remain with work to do
--- @return <code>false</code> if nothing remains to be done
+-- @return <code>true</code> if workers remain with work to do, <code>false</code> otherwise
 local dowork = function()
     local t
     while not t do
@@ -318,28 +293,63 @@ local dowork = function()
         if not t then break end     -- no more workers, so exit loop
         if t.thread and coroutine.status(t.thread) == "dead" then t = nil end
     end
-    if t then
-        -- execute this thread
-        runningworker = t
-        local success, err = coroutine.resume(t.thread)
-        runningworker = nil
-        if not success then
-            pcall(t.errhandler, nil, err)
-        end
-        if coroutine.status(t.thread) ~= "dead" then
-            if not t._hasbeenremoved then -- double check the worker didn't remove itself
-                if #t.queue > 0 then
-                    pushthread(t)   -- add thread to end of queue again for next run
-                else
-                    -- nothing in queue, so move to inactive list
-                    inactiveworkers[t.thread] = t
-                end
-            else
-                t._hasbeenremoved = nil
-            end
-        end
-    end
+    if t then t:step() end  -- execute it
     return (#activeworkers > 0)
+end
+
+
+--=============================================================================
+--               TIMERS
+--=============================================================================
+
+-------------------------------------------------------------------------------
+-- Remove an armed timer from the list of running timers
+local timerremove = function(t)
+    if t == order then order = t.next end
+    if t.previous then t.previous.next = t.next end
+    if t.next then t.next.previous = t.previous end
+	t.next = nil
+	t.previous = nil
+    if t.id then    -- fix: cancelling unarmed timer (no ID) error.
+        timers[t.id] = nil
+    end
+end
+
+-------------------------------------------------------------------------------
+-- Add a newly armed timer to the list of timers running
+local timeradd = function (t)
+    -- check existence
+    if t.id then
+        timerremove(t)
+    else
+        -- create ID
+        t.id = timerid
+        timerid = timerid + 1
+    end
+    -- store in id ordered list
+    timers[t.id]=t
+    -- store in expire-time ordered list
+    if not order then
+        -- list empty, just add
+        order=t
+        order.next = nil
+        order.previous = nil
+    elseif t.when < order.when then
+        -- insert at top of list
+        t.next = order
+        t.previous = nil
+        order.previous = t
+        order = t
+    else
+        local insertafter = order
+        while insertafter.next and (insertafter.next.when <= t.when) do
+            insertafter = insertafter.next
+        end
+        t.previous = insertafter
+        t.next = insertafter.next
+        insertafter.next = t
+        if t.next then t.next.previous = t end
+    end
 end
 
 -------------------------------------------------------------------------------
@@ -376,60 +386,11 @@ local timercheck = function(precision)
 end
 
 
--------------------------------------------------------------------------------
--- Indicator of the loop running or exiting.
--- @return <ul>
--- <li><code>nil</code>: the loop is not running, </li>
--- <li><code>false</code>: the loop is running, or </li>
--- <li><code>true</code>: the loop is scheduled to stop</li></ul>
--- @example# if copas.isexiting() ~= nil then
---     -- loop is currently running, make it exit after the worker queue is empty and cancel any timers
---     copas.exitloop(nil, false)
--- end
--- @see copas.loop
--- @see copas.exitloop
-copas.isexiting = function()
-    return exiting
-end
-
 -- creates the exittimer that will force the exit
 local startexittimer = function()
     assert(exittimer == nil, "exittimer already set")
     assert (exittimeout and exittimeout >= 0, "Bad exittimeout value; " .. tostring(exittimeout))
     exittimer = copas.newtimer(nil,function() exitingnow = true end, nil, false):arm(exittimeout)
-end
-
--------------------------------------------------------------------------------
--- Instructs Copas to exit the loop. It will wait for any background workers to complete.
--- If the <code>copas.eventer</code> is used then the timeout will only start after the
--- <code>copas.events.loopstopping</code> event has been completely handled.
--- @param timeout Timeout (in seconds) after which to forcefully exit the loop,
--- abandoning any workerthreads still running.
--- <ul><li><code>nil</code> or negative: no timeout, continue running until worker queue is empty</li>
--- <li><code>&lt 0</code>: exit immediately after next loop iteration, do not
--- wait for workers nor the <code>copas.events.loopstopping/loopstopped</code> events</li> to complete
--- (timers will still be cancelled if set to do so)</ul>
--- @param keeptimers (boolean) if <code>true</code> then the active timers will NOT be cancelled, otherwise
--- <code>copas.cancelall()</code> will be called to properly cancel all running timers.
--- @see copas.loop
--- @see copas.isexiting
-copas.exitloop = function(timeout, keeptimers)
-    if exiting == false then
-        exiting = true
-        exittimeout = tonumber(timeout)
-        exitcanceltimers = not keeptimers
-        exittimer = nil
-        if exittimeout and exittimeout < 0 then
-            exitingnow = true
-        else
-            exitingnow = false
-        end
-        if copas.eventer then
-            exiteventthreads = copas:dispatch(copas.events.loopstopping)
-        else
-            exiteventthreads = { threads = {} }       -- not used, so make empty table
-        end
-    end
 end
 
 -------------------------------------------------------------------------------
@@ -471,11 +432,13 @@ copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
         -- @param interval the interval after which the timer expires (in seconds). This must
         -- be set with the first call to <code>arm()</code> any additional calls will reuse
         -- the existing interval if no new interval is provided.
-        -- @return the timer <code>t</code>
+        -- @return the timer <code>t</code>, which allows chaining creating/arming calls, see example.
         -- @example# -- Create a new timer
-        -- local t = copas.newtimer(nil, function () print("hello world") end, nil, false)
+        -- local f = function() print("hello world") end
+        -- local t = copas.newtimer(nil, f, nil, false)
         -- t:arm(5)              -- arm it at 5 seconds
-        -- t:cancel()            -- cancel it again
+        -- -- which is equivalent to chaining the arm() call
+        -- local t = copas.newtimer(nil, f, nil, false):arm(5)
         -- @see t:cancel
         -- @see copas.newtimer
         arm = function(self, interval)
@@ -533,6 +496,11 @@ copas.cancelall = function()
         t:cancel()
     end
 end
+
+--=============================================================================
+--               COPAS CORE
+--=============================================================================
+
 
 -------------------------------------------------------------------------------
 -- Executes a single Copas step followed by the execution of the first expired
@@ -645,12 +613,57 @@ end
 
 
 --=============================================================================
+--               UTILITY FUNCTIONS
 --=============================================================================
---
---      UTILITY FUNCTIONS BASED ON COPASTIMER
---
---=============================================================================
---=============================================================================
+
+-------------------------------------------------------------------------------
+-- Indicator of the loop running or exiting.
+-- @return <ul>
+-- <li><code>nil</code>: the loop is not running, </li>
+-- <li><code>false</code>: the loop is running, or </li>
+-- <li><code>true</code>: the loop is scheduled to stop</li></ul>
+-- @example# if copas.isexiting() ~= nil then
+--     -- loop is currently running, make it exit after the worker queue is empty and cancel any timers
+--     copas.exitloop(nil, false)
+-- end
+-- @see copas.loop
+-- @see copas.exitloop
+copas.isexiting = function()
+    return exiting
+end
+
+-------------------------------------------------------------------------------
+-- Instructs Copas to exit the loop. It will wait for any background workers to complete.
+-- If the <code>copas.eventer</code> is used then the timeout will only start after the
+-- <code>copas.events.loopstopping</code> event has been completely handled.
+-- @param timeout Timeout (in seconds) after which to forcefully exit the loop,
+-- abandoning any workerthreads still running.
+-- <ul><li><code>nil</code> or negative: no timeout, continue running until worker queue is empty</li>
+-- <li><code>&lt 0</code>: exit immediately after next loop iteration, do not
+-- wait for workers nor the <code>copas.events.loopstopping/loopstopped</code> events</li> to complete
+-- (timers will still be cancelled if set to do so)</ul>
+-- @param keeptimers (boolean) if <code>true</code> then the active timers will NOT be cancelled, otherwise
+-- <code>copas.cancelall()</code> will be called to properly cancel all running timers.
+-- @see copas.loop
+-- @see copas.isexiting
+copas.exitloop = function(timeout, keeptimers)
+    if exiting == false then
+        exiting = true
+        exittimeout = tonumber(timeout)
+        exitcanceltimers = not keeptimers
+        exittimer = nil
+        if exittimeout and exittimeout < 0 then
+            exitingnow = true
+        else
+            exitingnow = false
+        end
+        if copas.eventer then
+            exiteventthreads = copas:dispatch(copas.events.loopstopping)
+        else
+            exiteventthreads = { threads = {} }       -- not used, so make empty table
+        end
+    end
+end
 
 
 -------------------------------------------------------------------------------
