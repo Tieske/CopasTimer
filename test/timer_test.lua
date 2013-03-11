@@ -22,7 +22,9 @@ local backgroundworker1 = function(queue)
         if w1 > 10 then return end  -- thread dies
     end
 end
-local t1 = copas.addworker(backgroundworker1):push("starting up")
+local t1 = copas.addworker(backgroundworker1)
+t1:push("starting up")
+
 local w2 = 0
 local backgroundworker2 = function(queue)
     while true do
@@ -35,7 +37,8 @@ local backgroundworker2 = function(queue)
         if w2 > 20 then return end  -- thread dies
     end
 end
-local t2 = copas.addworker(backgroundworker2):push("anything will do, just to start it")
+local t2 = copas.addworker(backgroundworker2)
+t2:push("anything will do, just to start it")
 
 -- function as just a timer
 local lasttime
@@ -52,7 +55,8 @@ local silly = function()
     elseif cnt == 4 then
         -- restart worker1
         w1 = 0
-        t1 = copas.addworker(backgroundworker1):push("starting again from the timer")
+        t1 = copas.addworker(backgroundworker1)
+		t1:push("starting again from the timer")
     end
 end
 

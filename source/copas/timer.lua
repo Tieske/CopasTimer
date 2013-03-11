@@ -170,6 +170,22 @@ copas.removeworker = function(t)
     end
 end
 
+local queueitem  -- trick luadoc
+-------------------------------------------------------------------------------
+-- Queue element to hold queued data in a worker queue.
+-- @name Data table
+-- @class table
+-- @field cancelled flag; <code>true</code> when the element has been cancelled
+-- @field completed flag; <code>true</code> when the element has been completed
+-- (this is when the worker requests the next element by calling its <code>pop()</code> function
+queueitem = function(data)
+  return {
+      data = data,
+      cancelled = nil,  -- set to true when cancelled
+      completed = nil,  -- set to true when completed
+    }
+end
+
 -------------------------------------------------------------------------------
 -- Adds a worker thread. The threads will be executed when there is no IO nor
 -- any expiring timer to run. The function will be started immediately upon
@@ -198,6 +214,7 @@ end
 -- -- enqueue data for the new worker
 -- w:push("here is some data")
 copas.addworker = function(func, errhandler)
+    local popdata
     local t
     t = {
         ------------------------------------------------------
@@ -212,19 +229,15 @@ copas.addworker = function(func, errhandler)
         errhandler = errhandler or _missingerrorhandler,
         queue = {},
         ------------------------------------------------------
-        -- Adds data to the worker queue. Note that this method
-        -- returns the worker table, to facilitate chaining upon creating
-        -- a worker.
+        -- Adds data to the worker queue. 
         -- @name w.push
         -- @param self The worker table
         -- @param data Data to be added to the queue of the worker
-        -- @return the worker table
-        -- @example# local w = copas.addworker(myfunc):push("some data")
-        -- -- which is equivalent to
-        -- local w = copas.addworker(myfunc)
+        -- @return data table queued
+        -- @example# local w = copas.addworker(myfunc)
         -- w:push("some data")
         push = function(self, data)
-                table.insert(self.queue, data)
+                table.insert(self.queue, queueitem(data))
                 if t ~= runningworker then
                     -- move worker to activelist, only if not active, active will be reinserted by dowork()
                     pushthread(self)
@@ -240,8 +253,18 @@ copas.addworker = function(func, errhandler)
         -- @return next data element popped from the queue
         pop = function(self)
                 assert(coroutine.running() == self.thread,"pop() may only be called by the workerthread itself")
-                coroutine.yield()
-                return table.remove(self.queue, 1)
+                if type(popdata) == "table" then
+                    --contains previously popped data element, mark as completed
+                    popdata.completed = true
+                end
+                popdata = nil
+                
+                while not popdata do
+                  coroutine.yield()
+                  popdata = table.remove(self.queue, 1)
+                  if popdata.cancelled then popdata = nil end
+                end
+                return popdata.data
             end,
         ------------------------------------------------------
         -- Yields control in case of lengthy operations.
