@@ -1,11 +1,15 @@
 
 local copas = require ("copas.timer")
 local socket = require ("socket")
+require("coxpcall")
+local pcall, xpcall = copcall, coxpcall
 
 local servers = {}
 setmetatable(servers, {__mode = "k"})   -- server table weak keys
 local clients = {}
 setmetatable(clients, {__mode = "k"})   -- client table weak keys
+local workers = {}
+setmetatable(workers, {__mode = "kv"})  -- workers table, weak keys (handler function) and values (worker tables)
 
 -------------------------------------------------------------------------------
 -- The eventer is an event dispatcher. It works on top of Copas Timer using the
@@ -27,12 +31,25 @@ setmetatable(clients, {__mode = "k"})   -- client table weak keys
 -- local function to do the actual dispatching by creating new threads
 -- @param client unique id of the client (use 'self' for objects)
 -- @param server unique id of the server that generated the event
--- @param handler function to use as the callback
+-- @param handler function to use as coroutine
 -- @param ... any additional parameters to be included in the event
--- @return thread (coroutine) scheduled in the background worker of copastimer
-local disp = function(handler, client, server, ...)
-    local wkr = copas.addworker(handler, {client, server, ...}, nil)
-    return wkr.thread
+-- @return item queued in the worker queue
+local disp = function(handler, client, server, event, ...)
+    if not workers[handler] then 
+        -- worker not found, so create one
+        workers[handler] = copas.addworker(function(queue)
+                -- wrap the handler in a function that cleans up when it returns
+                local success, err = pcall(handler, queue)
+                -- the handler should never return, but if it does (error?), clean it up
+                copas.removeworker(workers[handler])
+                workers[handler] = nil
+                if not success then
+                    error("Copas.Eventer eventhandler encountered an error:" .. tostring(err))
+                end
+            end)
+    end
+    
+    return workers[handler]:push({client = client, server = server, name = event, n = select("#", ...), ...  })
 end
 
 ------------------ functions for the decorator -------------------->> START
@@ -134,9 +151,9 @@ local et = {
     event = function() end,         -- unused dummy for luadoc
 
     -------------------------------------------------------------------------------
-    -- Table with threads (coroutines) created. One for each event handler dispatched.
-    -- @name e.threads
-    threads = function() end,       -- unused dummy for luadoc
+    -- Table/list with queueitems created. One for each event handler dispatched.
+    -- @name e.queueitems
+    queueitems = function() end,       -- unused dummy for luadoc
 
     -------------------------------------------------------------------------------
     -- Removes all event related workers from the copas background worker queue.
@@ -144,8 +161,8 @@ local et = {
     -- executed as background workers.
     -- @name e.cancel
     cancel = function(self)
-        for k, v in pairs(self.threads) do
-            copas.removeworker(v)
+        for _, item in pairs(self.queueitems) do
+            item:cancel()
         end
     end,
 
@@ -172,8 +189,8 @@ local et = {
         while not done do
             -- assume done, then check all threads
             done = true
-            for k, v in pairs(self.threads) do
-                if type(v) == "thread" and coroutine.status(v) ~= "dead" then
+            for _, item in pairs(self.queueitems) do
+                if not item.completed and not item.cancelled then
                     done = false    -- too bad, not finished, so back to false
                     break
                 end
@@ -185,7 +202,13 @@ local et = {
                 end
             else
                 -- not done, so yield to let other threads/coroutines finish their work
-                coroutine.yield()
+                local w = copas.getworker(coroutine.running())
+                if w then
+                    w:pause()  -- its a copastimer workerthread
+                else
+                    -- not a workerthread, just yield????
+                    coroutine.yield()
+                end
                 -- only here (after being resumed) the timer might have expired and set the result and error values
             end
         end
@@ -210,12 +233,22 @@ local et = {
 
         -- create a thread table list by looking up all worker thread tables
         local list = {}
-        for k,v in pairs(self.threads) do
-            v = copas.getworker(v)
-            if v then
-                table.insert(list, v)
+        for _,item in ipairs(self.queueitems) do
+            if item.cancelled or item.completed then
+              -- nothing to do, already done
             else
-                error("The event object provided contains a thread that is no longer available in the copas worker queue. Cannot execute it.")
+              table.insert(list, item)   -- insert in our tracking list
+              if not item.worker.queue[1] == item then
+                  -- so our element is somewhere further down the queue, we have to move it up to first position
+                  for i, item2 in ipairs(item.worker.queue) do
+                    if item2 == item then 
+                      -- found it, move it to 1st
+                      table.remove(item.worker.queue,i)
+                      table.insert(item.worker.queue,1,item2)
+                      break
+                    end
+                  end
+              end
             end
         end
 
@@ -223,18 +256,15 @@ local et = {
         local done = false
         while t > socket.gettime() do
             done = true
-            for k,v in pairs(list) do
-                if type(v.thread) == "thread" and coroutine.status(v.thread) ~= "dead" then
+            for _,item in ipairs(list) do
+                if not item.cancelled and not item.completed then
                     -- this one is not finished, so back to false, and resume routine
                     done = false
-                    v.args = v.args or {}
-                    local success, err = coroutine.resume(v.thread, unpack(v.args))
+                    copas.removeworker(item.worker)  -- must remove because step() will add it again to the end
+                    item.worker:step()               -- of the workers list and we don't want doubles
                 end
             end
-            if done then
-                -- we looped through all of them and they we're all 'dead', so done, exit
-                break
-            end
+            if done then break end
         end
         if done then
             return true
@@ -261,7 +291,7 @@ copas.eventer = {
         -- build event table with listeners
         local events = {}    -- table with events of server
         setmetatable(events, {__mode = "k"})   -- event client table weak keys
-        for i, v in pairs(eventlist) do
+        for _, v in pairs(eventlist) do
             events[v] = {}      -- client list for this event
         end
         servers[server] = events
@@ -278,7 +308,7 @@ copas.eventer = {
         assert(server, "Server parameter cannot be nil")
         if servers[server]  then
             servers[server] = nil
-            for c, ct in pairs(clients) do
+            for _, ct in pairs(clients) do
                 ct[server] = nil
             end
             -- raise my own event
@@ -336,7 +366,7 @@ copas.eventer = {
             local stable = servers[server]
             if not event then
                 -- unsubscribe from all events
-                for event, etable in pairs(stable) do
+                for _, etable in pairs(stable) do
                     etable[client] = nil
                 end
             else
@@ -411,21 +441,20 @@ copas.eventer = {
         assert(etable, "Event not found; " .. tostring(event))
 
         -- call event specific handlers
-        local t
+        local item
         for cl, hdlr in pairs(etable) do
-            t = disp(hdlr, cl, server, event, ...)
-            table.insert(tt,t)
+            item = disp(hdlr, cl, server, event, ...)
+            table.insert(tt,item)
         end
 
-        -- build event table
-        tt = {
-            threads = tt,
+        -- return event table
+        return {
+            queueitems = tt,
             event = event,
             cancel = et.cancel,
             finish = et.finish,
             waitfor = et.waitfor,
         }
-        return tt
     end,
 
     -------------------------------------------------------------------------------
@@ -447,7 +476,7 @@ copas.eventer = {
         assert(type(events) == "table", "Eventlist must be a table, got " .. tostring(events))
         -- fixup event table to be a set
         local ev = {}
-        for k,v in pairs(events) do
+        for _,v in pairs(events) do
             ev[v] = v
         end
         setmetatable(ev, {
@@ -515,7 +544,7 @@ copas.eventer = {
             -- loop through server table
             for event, etable in pairs(stable) do
                 local clist = {}
-                for client, hndlr in pairs(etable) do
+                for client, _ in pairs(etable) do
                     table.insert(clist, client)
                 end
                 result[event] = clist
@@ -564,52 +593,6 @@ local cevents      -- do this local, so LuaDoc picks up the next statement
 -- @see e.finish
 cevents = { "loopstarting", "loopstarted", "loopstopping", "loopstopped" }
 copas.eventer.decorate(copas, cevents )
-
-
-
-
---[[      change the 2 dashes '--' to 3 dashes '---' to make the test run
-local test = function()
-    print ("----------------------------------------------------------" )
-    print (" Starting Eventer test")
-    local obj1 = {}
-    assert(copas.eventer.getclients(obj1) == nil, "Was never registered as server, so should be nil")
-    copas:subscribe(obj1, function() end)  -- subscribe to all
-    local el = copas.eventer.getclients(copas)
-    assert(el, "obj1 should have been subscribed")
-    assert(el[copas.events.loopstarted][1] == obj1, "should have been subscribed to loopstarted")
-    assert(el[copas.events.loopstarting][1] == obj1, "should have been subscribed to loopstarting")
-    assert(el[copas.events.loopstopping][1] == obj1, "should have been subscribed to loopstopped")
-    assert(el[copas.events.loopstopped][1] == obj1, "should have been subscribed to loopstopping")
-    copas:unsubscribe(obj1, copas.events.loopstarted)
-    local el = copas.eventer.getclients(copas)
-    assert(#el[copas.events.loopstarted] == 0, "should have been unsubscribed from loopstarted")
-    copas:unsubscribe(obj1) -- unsubscribe from all
-    local el = copas.eventer.getclients(copas)
-    assert(#el[copas.events.loopstarting] == 0, "should have been unsubscribed from loopstarting")
-    assert(#el[copas.events.loopstopping] == 0, "should have been unsubscribed from loopstopping")
-    assert(#el[copas.events.loopstopped] == 0, "should have been unsubscribed from loopstopped")
-
-    assert(copas.eventer.getsubscriptions(obj1) == nil, "Was never subscribed to anything, so should be nil")
-    copas:subscribe(obj1, function() end)  -- subscribe to all
-    el = copas.eventer.getsubscriptions(obj1)
-    assert(el[copas], "Should have subscribed to copas")
-    el = el[copas]
-    assert(#el == 4, "Should have been 4 as copas has 4 events")
-    copas:unsubscribe(obj1, copas.events.loopstarted)
-    el = copas.eventer.getsubscriptions(obj1)[copas]
-    assert(#el == 3, "Should have been 3 as copas has 4 events and we unsubscribed from 1")
-    copas:unsubscribe(obj1) -- unsubscribe all
-    el = copas.eventer.getsubscriptions(obj1)
-    assert(el == nil, "Should have been nil, as the object has no more subscriptions")
-    print (" Eventer test completed; succes!")
-    print ("----------------------------------------------------------" )
-end
-test()
---]]
-
-
-
 
 
 -- return eventer

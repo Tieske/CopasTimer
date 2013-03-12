@@ -25,6 +25,7 @@
 local copas = require("copas")
 local socket = require("socket")
 require("coxpcall")
+local pcall, xpcall = copcall, coxpcall
 
 local timerid = 1		-- counter to create unique timerid's
 local timers = {}		-- table with running timers by their id
@@ -173,16 +174,32 @@ end
 local queueitem  -- trick luadoc
 -------------------------------------------------------------------------------
 -- Queue element to hold queued data in a worker queue.
--- @name Data table
+-- @name queueitem
 -- @class table
 -- @field cancelled flag; <code>true</code> when the element has been cancelled
--- @field completed flag; <code>true</code> when the element has been completed
--- (this is when the worker requests the next element by calling its <code>pop()</code> function
-queueitem = function(data)
+-- @field completed flag; <code>true</code> when the element has been completed or cancelled
+-- ('completed' is when the worker requests the next element by calling its <code>pop()</code> function
+queueitem = function(data, worker)
   return {
       data = data,
+      worker = worker,  -- worker thread table
       cancelled = nil,  -- set to true when cancelled
       completed = nil,  -- set to true when completed
+      -----------------------------------------------------------------------
+      -- Cancels the queueItem.
+      -- When cancelling both the <code>cancelled</code> and <code>completed</code>
+      -- flag will be set. The cancel flag will prevent the data from being executed
+      -- when it is being popped from the queue.
+      cancel = function(self)
+          self.cancelled = true
+          self.completed = true
+      end,
+      -----------------------------------------------------------------------
+      -- Completes the queueItem.
+      -- The <code>completed</code> flag will be set.
+      complete = function(self)
+          self.completed = true
+      end,
     }
 end
 
@@ -237,12 +254,12 @@ copas.addworker = function(func, errhandler)
         -- @example# local w = copas.addworker(myfunc)
         -- w:push("some data")
         push = function(self, data)
-                table.insert(self.queue, queueitem(data))
+                table.insert(self.queue, queueitem(data, self))
                 if t ~= runningworker then
                     -- move worker to activelist, only if not active, active will be reinserted by dowork()
                     pushthread(self)
                 end
-                return self  -- return thread table, so: local w = copas.addworker(myfunc):push("some data") still works
+                return self.queue[1]
             end,
         ------------------------------------------------------
         -- Retrieves data from the worker queue. Note that this method
@@ -253,16 +270,16 @@ copas.addworker = function(func, errhandler)
         -- @return next data element popped from the queue
         pop = function(self)
                 assert(coroutine.running() == self.thread,"pop() may only be called by the workerthread itself")
-                if type(popdata) == "table" then
+                if popdata then
                     --contains previously popped data element, mark as completed
-                    popdata.completed = true
+                    popdata:complete()
                 end
                 popdata = nil
                 
                 while not popdata do
                   coroutine.yield()
                   popdata = table.remove(self.queue, 1)
-                  if popdata.cancelled then popdata = nil end
+                  if popdata and popdata.cancelled then popdata = nil end
                 end
                 return popdata.data
             end,
@@ -279,9 +296,10 @@ copas.addworker = function(func, errhandler)
             end,
         -- perform a single step for this worker
         step = function(self)
+              local oldrunningworker = runningworker
               runningworker = self
               local success, err = coroutine.resume(self.thread)
-              runningworker = nil
+              runningworker = oldrunningworker
               if not success then
                   pcall(self.errhandler, nil, err)
               end
@@ -584,18 +602,18 @@ copas.loop = function (timeout, precision)
 
         -- check on exit strategy
         if exiting and not exitingnow then
-            if (next(exiteventthreads.threads)) then
+            if (next(exiteventthreads.queueitems)) then
                 -- we still have threads in the table
                 -- now cleanup exit events that are done
-                for k,v in pairs(exiteventthreads.threads) do
-                    if coroutine.status(v) == "dead" then
+                for k,v in pairs(exiteventthreads.queueitems) do
+                    if v.cancelled or v.completed then
                         -- this one is done, clear it
                         exiteventthreads[k] = nil
                     end
                 end
             end
             -- Are we done with the exit events and no timer has been set?
-            if not next(exiteventthreads.threads) and not exittimer and exittimeout then
+            if not next(exiteventthreads.queueitems) and not exittimer and exittimeout then
                 -- table is empty and we have a timeout that has not yet been set; so set it now.
                 startexittimer()
             end
@@ -633,11 +651,6 @@ copas.loop = function (timeout, precision)
     exittimeout = nil
     exiteventthreads = nil
 end
-
-
---=============================================================================
---               UTILITY FUNCTIONS
---=============================================================================
 
 -------------------------------------------------------------------------------
 -- Indicator of the loop running or exiting.
@@ -683,11 +696,14 @@ copas.exitloop = function(timeout, keeptimers)
         if copas.eventer then
             exiteventthreads = copas:dispatch(copas.events.loopstopping)
         else
-            exiteventthreads = { threads = {} }       -- not used, so make empty table
+            exiteventthreads = { queueitems = {} }       -- not used, so make empty table
         end
     end
 end
 
+--=============================================================================
+--               UTILITY FUNCTIONS
+--=============================================================================
 
 -------------------------------------------------------------------------------
 -- Calls a function delayed, after the specified amount of time.
