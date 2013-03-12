@@ -13,18 +13,17 @@ setmetatable(workers, {__mode = "kv"})  -- workers table, weak keys (handler fun
 
 -------------------------------------------------------------------------------
 -- The eventer is an event dispatcher. It works on top of Copas Timer using the
--- workers to create event threads. The eventer uses a publish/subscribe mechanism with servers and clients.
+-- workers to create event handlers. The eventer uses a publish/subscribe mechanism with servers and clients.
 -- The servers should register before firing any events, and the clients should
 -- subscribe to server events.<br/>
--- <br/>Dispatching creates a separate worker
--- (thread/coroutine) for each client that has to receive the event. This means that separate threads
--- will have been scheduled but not executed when an event is dispatched. Execution follows later when
--- the Copas Timer loop continues to handle its worker queue in the background.
+-- <br/>Dispatching pushes event data in the worker queues of the eventhandlers. This means that one or more workers
+-- have been scheduled to each handle one or more enqueued events, but they will not be executed when an event is dispatched. Execution follows later when
+-- the Copas Timer loop continues to handle its worker queues in the background.
 -- The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for
 -- the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.<br/>
 -- <br/>This module is part of Copas Timer and is free software under the MIT/X11 license.
 -- @copyright 2011-2013 Thijs Schreijer
--- @release Version 0.4.3, Timer module to extend Copas with a timer and worker capability
+-- @release Version 1.0, Timer module to extend Copas with a timer and worker capability
 
 
 -------------------------------------------------------------------------------
@@ -35,7 +34,7 @@ setmetatable(workers, {__mode = "kv"})  -- workers table, weak keys (handler fun
 -- @param ... any additional parameters to be included in the event
 -- @return item queued in the worker queue
 local disp = function(handler, client, server, event, ...)
-    if not workers[handler] then 
+    if not workers[handler] then
         -- worker not found, so create one
         workers[handler] = copas.addworker(function(queue)
                 -- wrap the handler in a function that cleans up when it returns
@@ -48,7 +47,7 @@ local disp = function(handler, client, server, event, ...)
                 end
             end)
     end
-    
+
     return workers[handler]:push({client = client, server = server, name = event, n = select("#", ...), ...  })
 end
 
@@ -58,20 +57,29 @@ local decor = {
 
     -------------------------------------------------------------------------------
     -- Table (as a set) with the event strings for this server.
-    -- @name s.events
+    -- @name server.events
     -- @see decorate
+    -- @example# -- create an object and decorate it with event capabilities
+    -- local obj1 = {}
+    -- copas.eventer.decorate(obj1, { "start", "error", "stop" } )
+    -- &nbsp
+    -- print(obj1.events.start)   --> "start"
+    -- print(obj1.events.error)   --> "error"
+    -- print(obj1.events.stop)    --> "stop"
     events = function() end,         -- unused dummy for luadoc
 
     -------------------------------------------------------------------------------
     -- Dispatches an event for this server. It functions as a shortcut to
     -- <code>serverdispatch()</code>.
-    -- @name s.dispatch
+    -- @name server.dispatch
+	-- @param self the (decorated) server object
     -- @param event event string of the event to dispatch
     -- @param ... any additional event parameters
-    -- @see s.events
+    -- @see server.events
     -- @see decorate
     -- @see serverdispatch
-    -- @usage# -- create an object and decorate it with event capabilities
+	-- @return event table
+    -- @example# -- create an object and decorate it with event capabilities
     -- local obj1 = {}
     -- copas.eventer.decorate(obj1, { "start", "error", "stop" } )
     -- &nbsp
@@ -90,29 +98,40 @@ local decor = {
     -------------------------------------------------------------------------------
     -- Subscribes a client to the events of this server. It functions as a shortcut
     -- to <code>clientsubscribe()</code>.
-    -- @name s.subscribe
+    -- @name server.subscribe
+	-- @param self the (decorated) server object
     -- @param client the client identifier (usually the client object table)
     -- @param handler the handler function for the event
     -- @param event the event to subscribe to or <code>nil</code> to subscribe to all events
-    -- @see s.events
+    -- @see server.events
     -- @see decorate
     -- @see clientsubscribe
-    -- @usage# -- create an object and decorate it with event capabilities
+    -- @example# -- create an object and decorate it with event capabilities
     -- local obj1 = {}
     -- copas.eventer.decorate(obj1, { "start", "error", "stop" } )
     -- &nbsp
     -- -- create another object and subscribe to events of obj1
     -- local obj2 = {
-    --     eventhandler = function(self, sender, event, ...)
-    --         print ("received event: " .. event)
-    --     end
+    --     eventhandler = function(eventqueue)
+	--         while true do
+	--             local event = eventqueue:pop()
+	--             local self = event.client
+	--             -- handle the retrieved data here
+	--             print(event.client)    -->  "table: 03AF0910"
+	--             print(event.server)    -->  "table: 06A30AD3"
+	--             print(event.name)      -->  "stop"
+	--             print(event.n)         -->  "2"
+	--             print(event[1])        -->  "arg1"
+	--             print(event[2])        -->  "arg2"
+	--         end
+	--     end,
     -- }
     -- obj1:subscribe(obj2, obj1.events.stop)
     -- &nbsp
     -- ..... do some stuff, start the copas loop, etc.
     -- &nbsp
     -- -- raise the stop event
-    -- local e = obj1:dispatch(obj1.events.stop)
+    -- local e = obj1:dispatch(obj1.events.stop, "arg1", "arg2")
     subscribe = function(self, client, handler, event)
         assert(client, "client cannot be nil")
         assert(type(handler) == "function", "handler must be a function, got " .. type(handler))
@@ -125,11 +144,12 @@ local decor = {
     -------------------------------------------------------------------------------
     -- Unsubscribes a client from the events of this server. It functions as a shortcut
     -- to <code>clientunsubscribe()</code>.
-    -- @name s.unsubscribe
+    -- @name server.unsubscribe
+	-- @param self the (decorated) server object
     -- @param client the client identifier (usually the client object table), must be the same as
     -- used while subscribing.
     -- @param event the event to unsubscribe from or <code>nil</code> to unsubscribe from all events
-    -- @see s.events
+    -- @see server.events
     -- @see decorate
     -- @see clientunsubscribe
     unsubscribe = function(self, client, event)
@@ -147,19 +167,22 @@ local et = {
 
     -------------------------------------------------------------------------------
     -- The event string. (this is a field, not a function)
-    -- @name e.event
+    -- @name event.event
+	-- @see server.events
     event = function() end,         -- unused dummy for luadoc
 
     -------------------------------------------------------------------------------
-    -- Table/list with queueitems created. One for each event handler dispatched.
-    -- @name e.queueitems
+    -- Table/list with queueitems created. One for each event subscription dispatched.
+	-- (this is a field, not a function)
+    -- @name event.queueitems
     queueitems = function() end,       -- unused dummy for luadoc
 
     -------------------------------------------------------------------------------
-    -- Removes all event related workers from the copas background worker queue.
-    -- Threads will remain in the event object itself, but will no longer be
-    -- executed as background workers.
-    -- @name e.cancel
+    -- Cancels all event related queueitems from the copas background worker queues.
+    -- Queueitems will remain in the event object itself, but will be flagged
+    -- as cancelled.
+    -- @name event.cancel
+	-- @param self the event table
     cancel = function(self)
         for _, item in pairs(self.queueitems) do
             item:cancel()
@@ -167,13 +190,14 @@ local et = {
     end,
 
     -------------------------------------------------------------------------------
-    -- Waits for an event to be completed. That is; all event threads spawned have died,
-    -- this does not include additional threads spawned from them. Current thread will
+    -- Waits for an event to be completed. That is; all event queueitems have been completed by the workers,
+    -- this does not include additional events spawned from them. Current thread/worker will
     -- yield while waiting (so cannot be used from the mainthread!).
-    -- @name e.waitfor
+    -- @name event.waitfor
+	-- @param self the event table
     -- @param timeout timeout (in seconds), use <code>nil</code> for no timeout
     -- @return <code>true</code> when completed, or <code>nil, "timeout"</code> in case of a timeout.
-    -- @see e.finish
+    -- @see event.finish
     waitfor = function(self, timeout)
         local done = false
         local err
@@ -216,15 +240,17 @@ local et = {
     end,
 
     -------------------------------------------------------------------------------
-    -- Waits for an event to be completed in a blocking mode. That is; all event threads spawned have died
-    -- (this does not include additional threads spawned from them). Current thread will
-    -- NOT yield while waiting, it will only process the event related threads. It is blocking, so timers, sockets
+    -- Waits for an event to be completed in a blocking mode. That is; all event queueitems have been completed by the workers
+    -- (this does not include additional events spawned from them). Current thread will
+    -- NOT yield while waiting, it will only process the event related queueitems. It is blocking, so timers, sockets
     -- and workers will not run in the mean time, so executing this method may take a long time so use carefully!<br/>
     -- If it should not block, then use <code>waitfor()</code>.
-    -- @name e.finish
+    -- @name event.finish
+	-- @param self the event table
     -- @param timeout timeout (in seconds), use <code>nil</code> for no timeout
-    -- @return <code>true</code> when completed, or <code>nil, "timeout"</code> in case of a timeout.
-    -- @see e.waitfor
+    -- @return <code>true</code> when completed, or <code>nil, "timeout"</code> in case of a timeout (in case of a timeout, the
+	-- unfinished queueitems will remain in the worker queues, they will not be cancelled).
+    -- @see event.waitfor
     finish = function(self, timeout)
         if not timeout then
             timeout = 365 * 24 * 60 * 60    -- use 1 year as 'no timeout', should suffice
@@ -241,7 +267,7 @@ local et = {
               if not item.worker.queue[1] == item then
                   -- so our element is somewhere further down the queue, we have to move it up to first position
                   for i, item2 in ipairs(item.worker.queue) do
-                    if item2 == item then 
+                    if item2 == item then
                       -- found it, move it to 1st
                       table.remove(item.worker.queue,i)
                       table.insert(item.worker.queue,1,item2)
@@ -280,10 +306,12 @@ local et = {
 copas.eventer = {
 
     -------------------------------------------------------------------------------
-    -- registers a server that will fire events
+    -- registers a server that will fire events.
+	-- The prefered way is to use the <code>decorate()</code> function.
     -- @param server a unique key to identify the specific server, can be a string or
     -- table, or whatever, as long as it is unique
     -- @param eventlist list of strings with event names (table keys are unused, only values, so may also be a set)
+	-- @see decorate
     serverregister = function(server, eventlist)
         assert(server, "Server parameter cannot be nil")
         assert(not servers[server],"Server is already registered")
@@ -301,7 +329,7 @@ copas.eventer = {
     end,
 
     -------------------------------------------------------------------------------
-    -- unregisters a server that will fire events
+    -- unregisters a server that will no longer fire events
     -- @param server a unique key to identify the specific server, can be a string or
     -- table, or whatever, as long as it is unique
     serverunregister = function(server)
@@ -318,13 +346,16 @@ copas.eventer = {
     end,
 
     -------------------------------------------------------------------------------
-    -- subscribes a client to events
+    -- subscribes a client to events.
+	-- The prefered way is to use the <code>decorate()</code> function and then call <code>subscribe()</code>
     -- @param client unique client parameter (self)
     -- @param server a unique key to identify the specific server
     -- @param handler event handler function to be called. It will be called with
     -- signature <code>handler(client, server, event, [additional event parameters...])</code>
     -- or in method notation; <code>client:handler(server, event, [additional event parameters...])</code>.
     -- @param event string, <code>nil</code> to subscribe to all events
+	-- @see decorate
+	-- @see server.subscribe
     clientsubscribe = function(client, server, handler, event)
         assert(client, "Client parameter cannot be nil")
         assert(type(handler) == "function", "Invalid handler parameter, expected function, got " .. type(handler))
@@ -354,10 +385,13 @@ copas.eventer = {
     end,
 
     -------------------------------------------------------------------------------
-    -- unsubscribes a client from events
+    -- unsubscribes a client from events.
+	-- The prefered way is to use the <code>decorate()</code> function and then call <code>unsubscribe()</code>
     -- @param client unique client parameter (self)
     -- @param server a unique key to identify the specific server, <nil>nil</nil> to unsubscribe all
     -- @param event string, <code>nil</code> to unsubscribe from all events
+	-- @see decorate
+	-- @see server.unsubscribe
     clientunsubscribe = function(client, server, event)
         assert(client, "Client parameter cannot be nil")
 
@@ -419,16 +453,19 @@ copas.eventer = {
 
 
     -------------------------------------------------------------------------------
-    -- dispatches an event from a server
+    -- dispatches an event from a server.
+	-- The prefered way is to use the <code>decorate()</code> function and then call <code>dispatch()</code>
     -- @param server a unique key to identify the specific server
     -- @param event string
     -- @param ... other arguments to be passed on as arguments to the eventhandler
-    -- @return eventobject, see the 'see' section below.
-    -- @see e.event
-    -- @see e.threads
-    -- @see e.cancel
-    -- @see e.waitfor
-    -- @see e.finish
+    -- @return event object, see the 'see' section below.
+    -- @see event.event
+    -- @see event.threads
+    -- @see event.cancel
+    -- @see event.waitfor
+    -- @see event.finish
+	-- @see decorate
+	-- @see server.dispatch
     serverdispatch = function(server, event, ...)
         local tt = {}   -- thread table
 
@@ -460,11 +497,12 @@ copas.eventer = {
     -------------------------------------------------------------------------------
     -- Decorates an object as an event server. It will provide the object with the
     -- following methods/tables; <ul>
-    -- <li><code>s:subscribe(client, handler, event)</code></li>
-    -- <li><code>s:unsubscribe(client, event)</code></li>
-    -- <li><code>s:dispatch(event, ...)</code></li>
-    -- <li><code>s.events</code></li>
-    -- </ul>the methods are shortcuts to the <code>eventer</code> methods <code>clientsubscribe, clientunsubscribe, serverdispatch</code>.
+    -- <li><code>server:subscribe(client, handler, event)</code></li>
+    -- <li><code>server:unsubscribe(client, event)</code></li>
+    -- <li><code>server:dispatch(event, ...)</code></li>
+    -- <li><code>server.events</code></li>
+    -- </ul>Additionally it will register the object as event server. The methods are
+	-- shortcuts to the <code>eventer</code> methods <code>clientsubscribe, clientunsubscribe, serverdispatch</code>.
     -- @param server The event server object that will be decorated with the methods and tables listed above.
     -- @param events A list of event strings. This list will be copied to a new table (as a set) and stored in <code>server.events</code>
     -- @see clientsubscribe
@@ -533,7 +571,7 @@ copas.eventer = {
     -- @return <code>nil</code> if the server is unregistered, otherwise a table
     -- with subscriptions. The result table is keyed by 'event string' and each value
     -- is a list of clients that is subscribed to this event.
-    -- @usage# local list = copas.eventer.getclients(copas)     -- get list of Copas clients
+    -- @example# local list = copas.eventer.getclients(copas)     -- get list of Copas clients
     -- list = list[copas.events.loopstarted]            -- get clients of the 'loopstarted' event
     -- print ("the Copas 'loopstarted' event has " .. #list .. " clients subscribed.")
     getclients = function(server)
@@ -579,7 +617,7 @@ local cevents      -- do this local, so LuaDoc picks up the next statement
 -- @class table
 -- @name copas.events
 -- @field loopstarting Fired <strong>before</strong> the copas loop starts. It will
--- immediately be finished (see <code>e.finish()</code>). So while the event threads
+-- immediately be finished (see <code>event.finish()</code>). So while the event threads
 -- run there will be no timers, sockets, nor workers running. Only the threads created
 -- for the 'loopstarting' event will run.
 -- @field loopstarted Fired when the Copas loop has started, by now timers, sockets
@@ -588,9 +626,9 @@ local cevents      -- do this local, so LuaDoc picks up the next statement
 -- event threads (for this specific event) have finished, the timers, sockets and
 -- workers will keep running.
 -- @field loopstopped Fired <strong>after</strong> the Copas loop has finished, this event will
--- immediately be finished (see <code>e.finish()</code>), so the timers,
+-- immediately be finished (see <code>event.finish()</code>), so the timers,
 -- sockets and workers no longer run.
--- @see e.finish
+-- @see event.finish
 cevents = { "loopstarting", "loopstarted", "loopstopping", "loopstopped" }
 copas.eventer.decorate(copas, cevents )
 
