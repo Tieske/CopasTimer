@@ -97,7 +97,8 @@ local decor = {
 
     -------------------------------------------------------------------------------
     -- Subscribes a client to the events of this server. It functions as a shortcut
-    -- to <code>clientsubscribe()</code>.
+    -- to <code>clientsubscribe()</code>. See the example below for the format of the
+	-- event data delivered to the event handler.
     -- @name server.subscribe
 	-- @param self the (decorated) server object
     -- @param client the client identifier (usually the client object table)
@@ -460,7 +461,7 @@ copas.eventer = {
     -- @param ... other arguments to be passed on as arguments to the eventhandler
     -- @return event object, see the 'see' section below.
     -- @see event.event
-    -- @see event.threads
+    -- @see event.queueitems
     -- @see event.cancel
     -- @see event.waitfor
     -- @see event.finish

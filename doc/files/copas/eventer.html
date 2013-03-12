@@ -827,7 +827,7 @@ Table (as a set) with the event strings for this server.
 
 <dt><a name="server.subscribe"></a><strong>server.subscribe</strong>&nbsp;(self, client, handler, event)</dt>
 <dd>
-Subscribes a client to the events of this server. It functions as a shortcut to <code>clientsubscribe()</code>.
+Subscribes a client to the events of this server. It functions as a shortcut to <code>clientsubscribe()</code>. See the example below for the format of the event data delivered to the event handler.
 
 
 <h3>Parameters:</h3>
@@ -1000,8 +1000,8 @@ event object, see the 'see' section below.
 		event.event
 	</a></li>
 	
-	<li><a href="">
-		event.threads
+	<li><a href="../../files/copas/eventer.html#event.queueitems">
+		event.queueitems
 	</a></li>
 	
 	<li><a href="../../files/copas/eventer.html#event.cancel">
