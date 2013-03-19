@@ -175,6 +175,11 @@
     <td class="summary">unregisters a server that will no longer fire events </td>
     </tr>
 
+    <tr>
+    <td class="name" nowrap><a href="#seterrorhandler">seterrorhandler</a>&nbsp;(handler)</td>
+    <td class="summary">Sets the error handler function to be used when calling eventhandlers.</td>
+    </tr>
+
 </table>
 
 
@@ -235,7 +240,7 @@
 	</li>
 	
 	<li>
-	  <code><em>loopstopping</em></code>: Fired the Copas loop starts exiting. For as long as not all event threads (for this specific event) have finished, the timers, sockets and workers will keep running.
+	  <code><em>loopstopping</em></code>: Fired when the Copas loop starts exiting. For as long as not all event threads (for this specific event) have finished, the timers, sockets and workers will keep running.
 	</li>
 	
 	<li>
@@ -1090,6 +1095,35 @@ unregisters a server that will no longer fire events
 	
 	<li>
 	  <code><em>server</em></code>: a unique key to identify the specific server, can be a string or table, or whatever, as long as it is unique
+	</li>
+	
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+</dd>
+
+
+
+
+<dt><a name="seterrorhandler"></a><strong>seterrorhandler</strong>&nbsp;(handler)</dt>
+<dd>
+Sets the error handler function to be used when calling eventhandlers.
+
+
+<h3>Parameters:</h3>
+<ul>
+	
+	<li>
+	  <code><em>handler</em></code>: the error handler function (the errorhandler will be passed along to a <code>xpcall()</code> call)
 	</li>
 	
 </ul>

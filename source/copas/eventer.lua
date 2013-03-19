@@ -3,6 +3,7 @@ local copas = require ("copas.timer")
 local socket = require ("socket")
 require("coxpcall")
 local pcall, xpcall = copcall, coxpcall
+local errorhandler
 
 local servers = {}
 setmetatable(servers, {__mode = "k"})   -- server table weak keys
@@ -25,6 +26,11 @@ setmetatable(workers, {__mode = "kv"})  -- workers table, weak keys (handler fun
 -- @copyright 2011-2013 Thijs Schreijer
 -- @release Version 1.0, Timer module to extend Copas with a timer and worker capability
 
+-------------------------------------------------------------------------------
+-- Will be used as error handler for eventhandlers
+local _missingerrorhandler = function(err)
+    return debug.traceback("copas.eventer encountered an error while executing an eventhandler: " .. tostring(err))
+end
 
 -------------------------------------------------------------------------------
 -- local function to do the actual dispatching by creating new threads
@@ -38,12 +44,12 @@ local disp = function(handler, client, server, event, ...)
         -- worker not found, so create one
         workers[handler] = copas.addworker(function(queue)
                 -- wrap the handler in a function that cleans up when it returns
-                local success, err = pcall(handler, queue)
+                local ok, err = xpcall(function() handler(queue) end, errorhandler or _missingerrorhandler)
                 -- the handler should never return, but if it does (error?), clean it up
                 copas.removeworker(workers[handler])
                 workers[handler] = nil
-                if not success then
-                    error("Copas.Eventer eventhandler encountered an error:" .. tostring(err))
+                if not ok then
+                  error(err)  -- must throw error, so copas.timer cleans up properly
                 end
             end)
     end
@@ -72,13 +78,13 @@ local decor = {
     -- Dispatches an event for this server. It functions as a shortcut to
     -- <code>serverdispatch()</code>.
     -- @name server.dispatch
-	-- @param self the (decorated) server object
+    -- @param self the (decorated) server object
     -- @param event event string of the event to dispatch
     -- @param ... any additional event parameters
     -- @see server.events
     -- @see decorate
     -- @see serverdispatch
-	-- @return event table
+    -- @return event table
     -- @example# -- create an object and decorate it with event capabilities
     -- local obj1 = {}
     -- copas.eventer.decorate(obj1, { "start", "error", "stop" } )
@@ -98,9 +104,9 @@ local decor = {
     -------------------------------------------------------------------------------
     -- Subscribes a client to the events of this server. It functions as a shortcut
     -- to <code>clientsubscribe()</code>. See the example below for the format of the
-	-- event data delivered to the event handler.
+    -- event data delivered to the event handler.
     -- @name server.subscribe
-	-- @param self the (decorated) server object
+    -- @param self the (decorated) server object
     -- @param client the client identifier (usually the client object table)
     -- @param handler the handler function for the event
     -- @param event the event to subscribe to or <code>nil</code> to subscribe to all events
@@ -114,18 +120,18 @@ local decor = {
     -- -- create another object and subscribe to events of obj1
     -- local obj2 = {
     --     eventhandler = function(eventqueue)
-	--         while true do
-	--             local event = eventqueue:pop()
-	--             local self = event.client
-	--             -- handle the retrieved data here
-	--             print(event.client)    -->  "table: 03AF0910"
-	--             print(event.server)    -->  "table: 06A30AD3"
-	--             print(event.name)      -->  "stop"
-	--             print(event.n)         -->  "2"
-	--             print(event[1])        -->  "arg1"
-	--             print(event[2])        -->  "arg2"
-	--         end
-	--     end,
+    --         while true do
+    --             local event = eventqueue:pop()
+    --             local self = event.client
+    --             -- handle the retrieved data here
+    --             print(event.client)    -->  "table: 03AF0910"
+    --             print(event.server)    -->  "table: 06A30AD3"
+    --             print(event.name)      -->  "stop"
+    --             print(event.n)         -->  "2"
+    --             print(event[1])        -->  "arg1"
+    --             print(event[2])        -->  "arg2"
+    --         end
+    --     end,
     -- }
     -- obj1:subscribe(obj2, obj1.events.stop)
     -- &nbsp
@@ -146,7 +152,7 @@ local decor = {
     -- Unsubscribes a client from the events of this server. It functions as a shortcut
     -- to <code>clientunsubscribe()</code>.
     -- @name server.unsubscribe
-	-- @param self the (decorated) server object
+    -- @param self the (decorated) server object
     -- @param client the client identifier (usually the client object table), must be the same as
     -- used while subscribing.
     -- @param event the event to unsubscribe from or <code>nil</code> to unsubscribe from all events
@@ -169,12 +175,12 @@ local et = {
     -------------------------------------------------------------------------------
     -- The event string. (this is a field, not a function)
     -- @name event.event
-	-- @see server.events
+    -- @see server.events
     event = function() end,         -- unused dummy for luadoc
 
     -------------------------------------------------------------------------------
     -- Table/list with queueitems created. One for each event subscription dispatched.
-	-- (this is a field, not a function)
+    -- (this is a field, not a function)
     -- @name event.queueitems
     queueitems = function() end,       -- unused dummy for luadoc
 
@@ -183,7 +189,7 @@ local et = {
     -- Queueitems will remain in the event object itself, but will be flagged
     -- as cancelled.
     -- @name event.cancel
-	-- @param self the event table
+    -- @param self the event table
     cancel = function(self)
         for _, item in pairs(self.queueitems) do
             item:cancel()
@@ -195,7 +201,7 @@ local et = {
     -- this does not include additional events spawned from them. Current thread/worker will
     -- yield while waiting (so cannot be used from the mainthread!).
     -- @name event.waitfor
-	-- @param self the event table
+    -- @param self the event table
     -- @param timeout timeout (in seconds), use <code>nil</code> for no timeout
     -- @return <code>true</code> when completed, or <code>nil, "timeout"</code> in case of a timeout.
     -- @see event.finish
@@ -229,7 +235,7 @@ local et = {
                 -- not done, so yield to let other threads/coroutines finish their work
                 local w = copas.getworker(coroutine.running())
                 if w then
-                    w:pause()  -- its a copastimer workerthread
+                    w:pause()  -- I'm currently running on a copastimer workerthread
                 else
                     -- not a workerthread, just yield????
                     coroutine.yield()
@@ -247,10 +253,10 @@ local et = {
     -- and workers will not run in the mean time, so executing this method may take a long time so use carefully!<br/>
     -- If it should not block, then use <code>waitfor()</code>.
     -- @name event.finish
-	-- @param self the event table
+    -- @param self the event table
     -- @param timeout timeout (in seconds), use <code>nil</code> for no timeout
     -- @return <code>true</code> when completed, or <code>nil, "timeout"</code> in case of a timeout (in case of a timeout, the
-	-- unfinished queueitems will remain in the worker queues, they will not be cancelled).
+    -- unfinished queueitems will remain in the worker queues, they will not be cancelled).
     -- @see event.waitfor
     finish = function(self, timeout)
         if not timeout then
@@ -307,12 +313,21 @@ local et = {
 copas.eventer = {
 
     -------------------------------------------------------------------------------
+    -- Sets the error handler function to be used when calling eventhandlers.
+    -- @param handler the error handler function (the errorhandler will be passed along
+    -- to a <code>xpcall()</code> call)
+    seterrorhandler = function(handler)
+		assert(type(handler) == "function", "The handler must be a function, got " .. type(handler))
+		errorhandler = handler
+	end,
+
+    -------------------------------------------------------------------------------
     -- registers a server that will fire events.
-	-- The prefered way is to use the <code>decorate()</code> function.
+    -- The prefered way is to use the <code>decorate()</code> function.
     -- @param server a unique key to identify the specific server, can be a string or
     -- table, or whatever, as long as it is unique
     -- @param eventlist list of strings with event names (table keys are unused, only values, so may also be a set)
-	-- @see decorate
+    -- @see decorate
     serverregister = function(server, eventlist)
         assert(server, "Server parameter cannot be nil")
         assert(not servers[server],"Server is already registered")
@@ -348,15 +363,15 @@ copas.eventer = {
 
     -------------------------------------------------------------------------------
     -- subscribes a client to events.
-	-- The prefered way is to use the <code>decorate()</code> function and then call <code>subscribe()</code>
+    -- The prefered way is to use the <code>decorate()</code> function and then call <code>subscribe()</code>
     -- @param client unique client parameter (self)
     -- @param server a unique key to identify the specific server
     -- @param handler event handler function to be called. It will be called with
     -- signature <code>handler(client, server, event, [additional event parameters...])</code>
     -- or in method notation; <code>client:handler(server, event, [additional event parameters...])</code>.
     -- @param event string, <code>nil</code> to subscribe to all events
-	-- @see decorate
-	-- @see server.subscribe
+    -- @see decorate
+    -- @see server.subscribe
     clientsubscribe = function(client, server, handler, event)
         assert(client, "Client parameter cannot be nil")
         assert(type(handler) == "function", "Invalid handler parameter, expected function, got " .. type(handler))
@@ -387,12 +402,12 @@ copas.eventer = {
 
     -------------------------------------------------------------------------------
     -- unsubscribes a client from events.
-	-- The prefered way is to use the <code>decorate()</code> function and then call <code>unsubscribe()</code>
+    -- The prefered way is to use the <code>decorate()</code> function and then call <code>unsubscribe()</code>
     -- @param client unique client parameter (self)
     -- @param server a unique key to identify the specific server, <nil>nil</nil> to unsubscribe all
     -- @param event string, <code>nil</code> to unsubscribe from all events
-	-- @see decorate
-	-- @see server.unsubscribe
+    -- @see decorate
+    -- @see server.unsubscribe
     clientunsubscribe = function(client, server, event)
         assert(client, "Client parameter cannot be nil")
 
@@ -455,7 +470,7 @@ copas.eventer = {
 
     -------------------------------------------------------------------------------
     -- dispatches an event from a server.
-	-- The prefered way is to use the <code>decorate()</code> function and then call <code>dispatch()</code>
+    -- The prefered way is to use the <code>decorate()</code> function and then call <code>dispatch()</code>
     -- @param server a unique key to identify the specific server
     -- @param event string
     -- @param ... other arguments to be passed on as arguments to the eventhandler
@@ -465,8 +480,8 @@ copas.eventer = {
     -- @see event.cancel
     -- @see event.waitfor
     -- @see event.finish
-	-- @see decorate
-	-- @see server.dispatch
+    -- @see decorate
+    -- @see server.dispatch
     serverdispatch = function(server, event, ...)
         local tt = {}   -- thread table
 
@@ -503,7 +518,7 @@ copas.eventer = {
     -- <li><code>server:dispatch(event, ...)</code></li>
     -- <li><code>server.events</code></li>
     -- </ul>Additionally it will register the object as event server. The methods are
-	-- shortcuts to the <code>eventer</code> methods <code>clientsubscribe, clientunsubscribe, serverdispatch</code>.
+    -- shortcuts to the <code>eventer</code> methods <code>clientsubscribe, clientunsubscribe, serverdispatch</code>.
     -- @param server The event server object that will be decorated with the methods and tables listed above.
     -- @param events A list of event strings. This list will be copied to a new table (as a set) and stored in <code>server.events</code>
     -- @see clientsubscribe
@@ -623,7 +638,7 @@ local cevents      -- do this local, so LuaDoc picks up the next statement
 -- for the 'loopstarting' event will run.
 -- @field loopstarted Fired when the Copas loop has started, by now timers, sockets
 -- and workers are running.
--- @field loopstopping Fired the Copas loop starts exiting. For as long as not all
+-- @field loopstopping Fired when the Copas loop starts exiting. For as long as not all
 -- event threads (for this specific event) have finished, the timers, sockets and
 -- workers will keep running.
 -- @field loopstopped Fired <strong>after</strong> the Copas loop has finished, this event will

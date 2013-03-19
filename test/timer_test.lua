@@ -11,6 +11,20 @@ function handle(skt)
   -- do some stuff
 end
 
+local someerror = function()
+	data = data * nil  -- this will error
+end
+
+-- create a thread raising an error, to see what the default errorhandler does
+local errworker = copas.addworker(function(queue)
+	while true do
+		local data = queue:pop()
+		print("\n\n===========================\nAn error will follow; to show errorhandler output\n===========================")
+		someerror()
+	end
+end)
+errworker:push("some data")
+
 -- create 2 workerthreads, where the second feeds data to the first
 local w1 = 0
 local backgroundworker1 = function(queue)
@@ -33,7 +47,8 @@ local backgroundworker2 = function(queue)
         w2=w2+1
         print("Worker 2 reporting " .. tostring(w2))
         -- worker 1 received its arguments, so pass some more
-        t1:push("  --==<< worker2 passes " .. w2 .. " to worker 1 >>==--  ")
+        local item, err = t1:push("  --==<< worker2 passes " .. w2 .. " to worker 1 >>==--  ")
+        if err then print("worker2:", err) end
         if w2 > 20 then return end  -- thread dies
     end
 end
@@ -60,6 +75,10 @@ local silly = function()
     end
 end
 
+local errtimer=function()
+	print("\n\n===========================\nAn error will follow; to show errorhandler output\n===========================")
+	someerror()
+end
 
 
 server = socket.bind(host, port)            -- create a server
@@ -73,6 +92,7 @@ copas.delayedexecutioner(5, function(t)
 
 print("Waiting for some bogus connection... will exit after the count down.")
 copas.newtimer(silly, silly, nil, true, nil):arm(2)  -- silly timer
+copas.newtimer(nil, errtimer, nil, false, nil):arm(1)  -- error timer
 
 copas.loop()                          -- enter loop
 print ("bye, bye...")

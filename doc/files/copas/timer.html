@@ -213,6 +213,14 @@
 	  <code><em>data</em></code>: the actual data
 	</li>
 	
+	<li>
+	  <code><em>cancel</em></code>: method
+	</li>
+	
+	<li>
+	  <code><em>complete</em></code>: method
+	</li>
+	
 </ul>
 
 
@@ -262,6 +270,18 @@
 	
 	<li>
 	  <code><em>queue</em></code>: Holds the list of queue elements to be processed by the worker
+	</li>
+	
+	<li>
+	  <code><em>push</em></code>: method
+	</li>
+	
+	<li>
+	  <code><em>pop</em></code>: method
+	</li>
+	
+	<li>
+	  <code><em>pause</em></code>: method
 	</li>
 	
 </ul>
@@ -322,7 +342,7 @@ Adds a worker thread. The workers will be executed when there is no IO nor any e
 	</li>
 	
 	<li>
-	  <code><em>errhandler</em></code>: function to handle any errors returned
+	  <code><em>errhandler</em></code>: function to handle any errors returned (must be a function taking 2 arguments; 1 - coroutine generating the error, 2 - returned error)
 	</li>
 	
 </ul>
@@ -702,7 +722,7 @@ Creates a new timer. After creating call the <code>arm</code> method of the new 
 	</li>
 	
 	<li>
-	  <code><em>f_error</em></code>: callback function to execute when any of the other callbacks generates an error
+	  <code><em>f_error</em></code>: callback function to execute (in a <code>xpcall()</code> call) when any of the other callbacks generates an error
 	</li>
 	
 </ul>
@@ -1230,7 +1250,7 @@ data field of the next queueitem popped from the queue
 
 <dt><a name="worker.push"></a><strong>worker.push</strong>&nbsp;(self, data)</dt>
 <dd>
-Adds data to the worker queue.
+Adds data to the worker queue. If the worker has died, it will return an error and nothing will be enqueued.
 
 
 <h3>Parameters:</h3>
@@ -1254,7 +1274,7 @@ Adds data to the worker queue.
 
 
 <h3 class="inline-block">Return value:</h3>
-queueitem that was added to the worker queue
+queueitem that was added to the worker queue, or <code>nil</code> and error message
 
 </div>
 
