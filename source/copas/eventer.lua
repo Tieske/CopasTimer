@@ -133,7 +133,7 @@ local decor = {
     --         end
     --     end,
     -- }
-    -- obj1:subscribe(obj2, obj1.events.stop)
+    -- obj1:subscribe(obj2, obj2.eventhandler, obj1.events.stop)
     -- &nbsp
     -- ..... do some stuff, start the copas loop, etc.
     -- &nbsp
