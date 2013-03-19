@@ -93,7 +93,7 @@ local my_app = {
 }
 
 copas:subscribe(my_app, my_app.before_start, copas.events.loopstarting)
-copas:subscribe(my_app, my_app.before_start, copas.events.loopstarted)
+copas:subscribe(my_app, my_app.after_start, copas.events.loopstarted)
 
 copas.loop()
 ````
