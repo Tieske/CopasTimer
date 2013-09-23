@@ -1,3 +1,18 @@
+-------------------------------------------------------------------------------
+-- The eventer is an event dispatcher. It works on top of Copas Timer using the
+-- workers to create event handlers. The eventer uses a publish/subscribe mechanism with servers and clients.
+-- The servers should register before firing any events, and the clients should
+-- subscribe to server events.<br/>
+-- <br/>Dispatching pushes event data in the worker queues of the eventhandlers. This means that one or more workers
+-- have been scheduled to each handle one or more enqueued events, but they will not be executed when an event is dispatched. Execution follows later when
+-- the Copas Timer loop continues to handle its worker queues in the background.
+-- The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for
+-- the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.<br/>
+-- <br/>This module is part of Copas Timer and is free software under the MIT/X11 license.
+-- @copyright 2011-2013 Thijs Schreijer
+-- @release Version 1.0, Timer module to extend Copas with a timer and worker capability
+-- @module
+
 
 local copas = require ("copas.timer")
 local socket = require ("socket")
@@ -13,21 +28,8 @@ local workers = {}
 setmetatable(workers, {__mode = "kv"})  -- workers table, weak keys (handler function) and values (worker tables)
 
 -------------------------------------------------------------------------------
--- The eventer is an event dispatcher. It works on top of Copas Timer using the
--- workers to create event handlers. The eventer uses a publish/subscribe mechanism with servers and clients.
--- The servers should register before firing any events, and the clients should
--- subscribe to server events.<br/>
--- <br/>Dispatching pushes event data in the worker queues of the eventhandlers. This means that one or more workers
--- have been scheduled to each handle one or more enqueued events, but they will not be executed when an event is dispatched. Execution follows later when
--- the Copas Timer loop continues to handle its worker queues in the background.
--- The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for
--- the <code>copas.eventer.decorate()</code> method which will provide an object/table with event capabilities.<br/>
--- <br/>This module is part of Copas Timer and is free software under the MIT/X11 license.
--- @copyright 2011-2013 Thijs Schreijer
--- @release Version 1.0, Timer module to extend Copas with a timer and worker capability
-
--------------------------------------------------------------------------------
--- Will be used as error handler for eventhandlers
+-- Will be used as error handler for eventhandlers.
+-- @param err the error object
 local _missingerrorhandler = function(err)
     return debug.traceback("copas.eventer encountered an error while executing an eventhandler: " .. tostring(err))
 end
@@ -587,7 +589,7 @@ copas.eventer = {
     -- @return <code>nil</code> if the server is unregistered, otherwise a table
     -- with subscriptions. The result table is keyed by 'event string' and each value
     -- is a list of clients that is subscribed to this event.
-    -- @example# local list = copas.eventer.getclients(copas)     -- get list of Copas clients
+    -- @usage local list = copas.eventer.getclients(copas)     -- get list of Copas clients
     -- list = list[copas.events.loopstarted]            -- get clients of the 'loopstarted' event
     -- print ("the Copas 'loopstarted' event has " .. #list .. " clients subscribed.")
     getclients = function(server)

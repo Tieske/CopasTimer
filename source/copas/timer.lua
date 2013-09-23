@@ -99,7 +99,7 @@ end
 -- @return the worker table (as earlier returned by <code>addworker()</code>)
 -- or <code>nil</code> if it wasn't found
 -- @see copas.addworker
--- @example# if copas.getworker(coroutine.running()) then
+-- @usage if copas.getworker(coroutine.running()) then
 --     print ("I'm running as a background worker")
 -- else
 --     print ("No background worker found, so I'm on my own")
@@ -251,7 +251,7 @@ _worker = nil
 -- @return worker table
 -- @see copas.removeworker
 -- @see worker
--- @example# local w = copas.addworker(function(queue)
+-- @usage local w = copas.addworker(function(queue)
 --         -- do some initializing here... will be run immediately upon
 --         -- adding the worker
 --         while true do
@@ -279,7 +279,7 @@ copas.addworker = function(func, errhandler)
         -- @param self The worker table
         -- @param data Data to be added to the queue of the worker
         -- @return queueitem that was added to the worker queue, or <code>nil</code> and error message
-        -- @example# local w = copas.addworker(myfunc)
+        -- @usage local w = copas.addworker(myfunc)
         -- worker:push("some data")
 		    -- @see worker
 		    -- @see queueitem
@@ -494,7 +494,7 @@ end
 -- the same interval after it expired
 -- @param f_error callback function to execute (in a <code>xpcall()</code> call)
 -- when any of the other callbacks generates an error
--- @example# -- Create a new timer
+-- @usage -- Create a new timer
 -- local t = copas.newtimer(nil, function () print("hello world") end, nil, false, nil)
 -- &nbsp;
 -- -- Create timer and arm it immediately, to be run in 5 seconds
@@ -520,7 +520,7 @@ copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
         -- be set with the first call to <code>arm()</code> any additional calls will reuse
         -- the existing interval if no new interval is provided.
         -- @return the timer <code>t</code>, which allows chaining creating/arming calls, see example.
-        -- @example# -- Create a new timer
+        -- @usage -- Create a new timer
         -- local f = function() print("hello world") end
         -- local t = copas.newtimer(nil, f, nil, false)
         -- t:arm(5)              -- arm it at 5 seconds
@@ -560,7 +560,7 @@ copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
         -- provided when creating the timer.
         -- @name timer.cancel
         -- @param self timer table
-        -- @example# -- Create a new timer
+        -- @usage -- Create a new timer
         -- local t = copas.newtimer(nil, function () print("hello world") end, nil, false)
         -- t:arm(5)              -- arm it at 5 seconds
         -- t:cancel()            -- cancel it again
@@ -705,7 +705,7 @@ end
 -- <li><code>nil</code>: the loop is not running, </li>
 -- <li><code>false</code>: the loop is running, or </li>
 -- <li><code>true</code>: the loop is scheduled to stop</li></ul>
--- @example# if copas.isexiting() ~= nil then
+-- @usage if copas.isexiting() ~= nil then
 --     -- loop is currently running, make it exit after the worker queue is empty and cancel any timers
 --     copas.exitloop(nil, false)
 -- end
@@ -764,7 +764,7 @@ end
 -- @param func function to call
 -- @param ... any arguments to be passed to the function
 -- @see copas.newtimer
--- @example# local t = socket.gettime()
+-- @usage local t = socket.gettime()
 -- copas.delayedexecutioner(5, function(txt)
 --         print(txt .. " and it was " .. socket.gettime() - t .. " to be precise.")
 --     end, "This should display in 5 seconds from now.")
@@ -798,7 +798,7 @@ end
 -- @param ... additional parameters passed on to both the <code>condition()</code>
 -- and <code>handler()</code> functions.
 -- @return timer that verifies the condition.
--- @example# local count = 1
+-- @usage local count = 1
 -- function check(param)
 --     print("Check count ", count, ". Called using param = ", param)
 --     count = count + 1
