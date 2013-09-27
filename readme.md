@@ -117,7 +117,7 @@ return my_module
 ````
 
 
-##Changelog;
+##Changelog
 ###xx-xxx-2013; release 1.0
 - background workers have been completely revised to work as coroutines instead of callbacks. This also reflects in the `eventer` module, where 
 event handlers must now be setup as coroutines and get their event data from a queue.

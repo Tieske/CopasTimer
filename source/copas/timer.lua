@@ -1,21 +1,26 @@
 -------------------------------------------------------------------------------
 -- Copas Timer is a module that adds a timer capability to the Copas scheduler.
--- It provides the same base functions <code>step</code> and <code>loop</code>
+-- It provides the same base functions `copas.step` and `copas.loop`
 -- as Copas (it actually replaces them) except that it will also check for (and
--- run) timers expiring and run background workers if there is no IO or timer to
--- handle.<br/>
--- <br/>To use the module it should be required as; <code>local copas =
--- require("copas.timer")</code> because it returns the global <code>copas</code>
--- table and not a separate timer table.<br/>
--- <br/>There is a difference between the 2 background mechanisms provided; the
--- timers run on the main loop, and hence should never yield. The workers run in
--- their own thread (coroutine) and can be yielded if they take too long.<br/>
--- <br/>The workers are dispatched from a rotating queue, so when a worker is up to run
+-- run) `timer` expiring and run background `worker` if there is no IO or `timer` to
+-- handle.
+-- 
+-- To use the module it should be required as; `local copas =
+-- require("copas.timer")` because it returns the global `copas`
+-- table and not a separate timer table.
+--
+-- There is a difference between the 2 background mechanisms provided; the
+-- `timer` runs on the main loop, and hence should never yield. The `worker` runs in
+-- their own thread (coroutine) and can be yielded (`worker:pause`) if they take too long.
+--
+-- The workers are dispatched from a rotating queue, so when a worker is up to run
 -- it will be removed from the queue, resumed, and (if not finished) added at the end
--- of the queue again.<br/>
--- <br/>Copas Timer is free software under the MIT/X11 license.
+-- of the queue again.
+--
+-- @author Thijs Schreijer, http://www.thijsschreijer.nl
+-- @license Copas Timer is free software under the MIT/X11 license.
 -- @copyright 2011-2013 Thijs Schreijer
--- @release Version 1.0, Timer module to extend Copas with a timer and worker capability
+-- @release Version 1.0, Timer module to extend Copas with a timer, worker and event capabilities
 
 local copas = require("copas")
 local socket = require("socket")
@@ -40,14 +45,12 @@ local activeworkers = {}        -- list with background worker threads, currentl
 local inactiveworkers = {}      -- table with background workers, currently inactive, indexed by the thread
 local runningworker             -- the currently running worker table
 
--------------------------------------------------------------------------------
 -- Will be used as error handler for timers if none provided
 local _missingTerrorhandler = function(...)
 	print("copas.timer: Error in timer callback: ",  ... )
     print(debug.traceback())
 end
 
--------------------------------------------------------------------------------
 -- Will be used as error handler for workers if none provided
 local _missingWerrorhandler = function(co, msg)
     print(debug.traceback(co, "copas.timer: Error in worker coroutine: " .. tostring(msg)))
@@ -59,6 +62,10 @@ end
 --=============================================================================
 
 -------------------------------------------------------------------------------
+-- Backgroundworkers.
+-- @section workers
+
+
 -- Adds a background worker to the end of the active thread list. Removes it
 -- simultaneously from the inactive list.
 -- @param t thread table (see copas.addworker()) to add to the list
@@ -67,11 +74,11 @@ local pushthread = function(t)
     inactiveworkers[t.thread] = nil  -- remove to be sure
 end
 
--------------------------------------------------------------------------------
 -- Pops background worker from the active thread list
 -- @param t thread table (see copas.addworker()) or actual thread (coroutine)
 -- to remove from the list. If nil then just the one on top will be popped.
--- @return the popped thread table, or nil if it wasn't found
+-- @return[1] the popped thread table
+-- @return[2] `nil` if the thread/worker wasn't found
 local popthread = function(t)
     if #activeworkers == 0 then
         return nil
@@ -94,10 +101,10 @@ local popthread = function(t)
 end
 
 -------------------------------------------------------------------------------
--- Returns a background worker table
--- @param t thread (coroutine) to look up
--- @return the worker table (as earlier returned by <code>addworker()</code>)
--- or <code>nil</code> if it wasn't found
+-- Returns a background `worker`.
+-- @tparam coroutine t coroutine to look up
+-- @return[1] the `worker` table (as earlier returned by `copas.addworker`)
+-- @return[2] `nil` if the coroutine wasn't found
 -- @see copas.addworker
 -- @usage if copas.getworker(coroutine.running()) then
 --     print ("I'm running as a background worker")
@@ -130,11 +137,10 @@ copas.getworker = function(t)
 end
 
 -------------------------------------------------------------------------------
--- Removes a worker thread
--- @param t worker table (as returned by <code>copas.addworker()</code>), or actual thread/coroutine
--- to be removed.
--- @return worker table or <code>nil</code> if it wasn't found
--- @see copas.addworker
+-- Removes a `worker` from the Copas scheduler.
+-- @param t coroutine or `worker` object to be removed
+-- @return[1] `worker` 
+-- @return[2] `nil` if the coroutine/worker wasn't found
 copas.removeworker = function(t)
     if t then
         local tt = popthread(t)
@@ -172,15 +178,12 @@ copas.removeworker = function(t)
     end
 end
 
-local queueitem  -- trick luadoc
--------------------------------------------------------------------------------
 -- Queue element to hold queued data in a worker queue. Queue elements are created
--- and returned by the the <code>worker:push()</code> method.
--- @name queueitem
+-- and returned by the the `worker:push()` method.
 -- @class table
--- @field cancelled flag; <code>true</code> when the element has been cancelled
--- @field completed flag; <code>true</code> when the element has been completed or cancelled
--- ('completed' is when the worker requests the next element by calling its <code>pop()</code> function
+-- @field cancelled flag; `true` when the element has been cancelled
+-- @field completed flag; `true` when the element has been completed or cancelled
+-- ('completed' is when the worker requests the next element by calling its `pop()` function
 -- @field worker The worker table for which this queue element has been enqueued.
 -- @field data the actual data
 -- @field cancel method
@@ -188,69 +191,55 @@ local queueitem  -- trick luadoc
 -- @see queueitem.cancel
 -- @see queueitem.complete
 -- @see worker.push
-queueitem = function(data, worker)
-  return {
+local newqueueitem = function(data, worker)
+
+-------------------------------------------------------------------------------
+-- QueueItem class.
+-- Object created by `worker:push` when data is pushed into the `worker` queue. This 
+-- object can be tracked for progress or cancellation.
+-- @type queueitem
+  
+  local queueitem = {
       data = data,
       worker = worker,  -- worker thread table
       cancelled = nil,  -- set to true when cancelled
       completed = nil,  -- set to true when completed
-      -----------------------------------------------------------------------
-      -- Cancels the queueItem.
-      -- When cancelling both the <code>cancelled</code> and <code>completed</code>
-      -- flag will be set. The cancel flag will prevent the data from being executed
-      -- when it is being popped from the queue.
-      -- @name queueitem.cancel
-      -- @param self the queueitem
-      -- @see queueitem
-      -- @see worker.push
-      cancel = function(self)
-          self.cancelled = true
-          self.completed = true
-      end,
-      -----------------------------------------------------------------------
-      -- Completes the queueItem.
-      -- The <code>completed</code> flag will be set.
-      -- @name queueitem.complete
-      -- @param self the queueitem
-      -- @see queueitem
-      -- @see worker.push
-      complete = function(self)
-          self.completed = true
-      end,
-    }
+  }
+  -----------------------------------------------------------------------
+  -- Cancels the `queueitem`.
+  -- When cancelling both the `cancelled` and `completed`
+  -- flag will be set. The `cancelled` flag will prevent the data from being executed
+  -- when it is being popped from the queue.
+  function queueitem:cancel()
+      self.cancelled = true
+      self.completed = true
+  end
+  
+  -----------------------------------------------------------------------
+  -- Marks the `queueitem` as completed.
+  -- The `completed` flag will be set. Generally there is no need to call this method, it will
+  -- be called when the `worker` handling this element pops the next element from its queue.
+  function queueitem:complete()
+      self.completed = true
+  end
+  
+  return queueitem
 end
 
-local _worker -- trick LuaDoc, its defined within copas.addworker below
+
 -------------------------------------------------------------------------------
--- Worker object. These are created by the <code>addworker()</code> method.
--- @name worker
--- @class table
--- @field thread Holds the thread/coroutine for this worker
--- @field errhandler Holds the errorhandler for this worker
--- @field queue Holds the list of queue elements to be processed by the worker
--- @field push method
--- @field pop method
--- @field pause method
--- @see worker.push
--- @see worker.pop
--- @see worker.pause
--- @see copas.addworker
-_worker = {}
-_worker = nil
--------------------------------------------------------------------------------
--- Adds a worker thread. The workers will be executed when there is no IO nor
--- any expiring timer to run. The function will be started immediately upon
--- creating the coroutine for the worker. Calling <code>worker:push(data)</code> on
+-- Creates a `worker` and adds it to the Copas scheduler. The workers will be executed when there is no IO nor
+-- any expiring `timer` to run. The function will be started immediately upon
+-- creating the coroutine for the worker. Calling `worker:push` on
 -- the returned worker table will enqueue data to be handled. The function can
--- fetch data from the queue through <code>self:pop()</code> which will
+-- fetch data from the queue through `worker:pop` which will
 -- pop a new element from the workers queue. For lengthy operations where the code needs
--- to yield without popping a new element from the queue, call <code>self:pause()</code>.
--- @param func function to execute as the coroutine
--- @param errhandler function to handle any errors returned (must be a function
--- taking 2 arguments; 1 - coroutine generating the error, 2 - returned error)
--- @return worker table
+-- to yield without popping a new element from the queue, call `worker:pause`.
+-- @tparam function func function to execute as the coroutine
+-- @tparam function errhandler function to handle any errors returned or `nil` (should be a function taking 2 arguments; 1 - coroutine generating the error, 2 - returned error)
+-- @return `worker`
 -- @see copas.removeworker
--- @see worker
+-- @within Backgroundworkers
 -- @usage local w = copas.addworker(function(queue)
 --         -- do some initializing here... will be run immediately upon
 --         -- adding the worker
@@ -267,114 +256,113 @@ _worker = nil
 -- w:push("here is some data")
 copas.addworker = function(func, errhandler)
     local popdata
-    local t
-    t = {
+    local worker = {
         thread = coroutine.create(func),
         errhandler = errhandler or _missingWerrorhandler,
-        queue = {},
-        ------------------------------------------------------
-        -- Adds data to the worker queue. If the worker has died, it will return an error
-        -- and nothing will be enqueued.
-        -- @name worker.push
-        -- @param self The worker table
-        -- @param data Data to be added to the queue of the worker
-        -- @return queueitem that was added to the worker queue, or <code>nil</code> and error message
-        -- @usage local w = copas.addworker(myfunc)
-        -- worker:push("some data")
-		    -- @see worker
-		    -- @see queueitem
-        push = function(self, data)
-                if coroutine.status(self.thread) == "dead" then return nil, "cannot push data to dead worker" end
-                table.insert(self.queue, queueitem(data, self))
-                if t ~= runningworker then
-                    -- move worker to activelist, only if not active, active will be reinserted by dowork()
-                    pushthread(self)
-                end
-                return self.queue[1]
-            end,
-        ------------------------------------------------------
-        -- Retrieves data from the worker queue (and implicitly yields control). Note that this method
-        -- implicitly yields the coroutine until new data has been pushed in the worker queue.
-        -- @name worker.pop
-        -- @param self The worker table
-        -- @return data field of the next queueitem popped from the queue
-        -- @see worker
-        -- @see queueitem
-        pop = function(self)
-                assert(coroutine.running() == self.thread,"pop() may only be called by the workerthread itself")
-                if self._lastpopped then
-                    --contains previously popped data element, mark as completed
-                    self._lastpopped:complete()
-                end
-                self._lastpopped = nil
+        queue = {}
+    }    
+-------------------------------------------------------------------------------
+-- Worker class.
+-- This class represents a `worker` and its queue with `queueitem` objects. It can be used to manipulate the worker and push data to it.
+-- @type worker
+-- @field thread Holds the coroutine for this worker
+-- @field errhandler Holds the errorhandler for this worker
+-- @field queue Holds the list of `queueitem` objects waiting to be processed by the worker
+        
+    ------------------------------------------------------
+    -- Adds data to the `worker` queue. If the `worker` has died, it will return an error
+    -- and nothing will be enqueued.
+    -- @param data Data (any type) to be added to the queue of the `worker`
+    -- @return[1] `queueitem` that was added to the `worker` queue
+    -- @return[2] `nil` 
+    -- @return[2] error message
+    -- @usage local w = copas.addworker(myfunc)
+    -- w:push("some data")
+    function worker:push(data)
+        if coroutine.status(self.thread) == "dead" then return nil, "cannot push data to dead worker" end
+        table.insert(self.queue, newqueueitem(data, self))
+        if t ~= runningworker then
+            -- move worker to activelist, only if not active, active will be reinserted by dowork()
+            pushthread(self)
+        end
+        return self.queue[1]
+    end
+    ------------------------------------------------------
+    -- Retrieves data from the `worker` queue (and implicitly yields control). Note that this method
+    -- implicitly yields the coroutine until new data has been pushed in the `worker` queue.
+    -- @return data field of the next `queueitem` popped from the queue
+    function worker:pop()
+        assert(coroutine.running() == self.thread,"pop() may only be called by the workerthread itself")
+        if self._lastpopped then
+            --contains previously popped data element, mark as completed
+            self._lastpopped:complete()
+        end
+        self._lastpopped = nil
 
-                while not self._lastpopped do
-                  coroutine.yield()
-                  self._lastpopped = table.remove(self.queue, 1)
-                  if self._lastpopped and self._lastpopped.cancelled then self._lastpopped = nil end
-                end
-                return self._lastpopped.data
-            end,
-        ------------------------------------------------------
-        -- Yields control in case of lengthy operations. Similar to <code>pop()</code> except
-        -- that this method does not pop a new element from the worker queue.
-        -- @name worker.pause
-        -- @param self The worker table
-        -- @return <code>true</code>
-        -- @see worker
-        pause = function(self)
-                assert(coroutine.running() == self.thread,"pause() may only be called by the workerthread itself")
-                table.insert(self.queue,1,true)  -- insert fake element; true
-                coroutine.yield()
-                return table.remove(self.queue, 1) -- returns the fake element; true
-            end,
-        -- perform a single step for this worker
-        step = function(self)
-              local oldrunningworker = runningworker
-              runningworker = self
-              local success, err = coroutine.resume(self.thread)
-              runningworker = oldrunningworker
-              if not success then
-                  pcall(self.errhandler, self.thread, err)
-              end
-              if coroutine.status(self.thread) ~= "dead" then
-                  -- coroutine is still alive
-                  if not self._hasbeenremoved then -- double check the worker didn't remove itself
-                      if #self.queue > 0 then
-                          pushthread(self)   -- add thread to end of queue again for next run
-                      else
-                          -- nothing in queue, so move to inactive list
-                          inactiveworkers[self.thread] = self
-                      end
-                  else
-                      self._hasbeenremoved = nil
-                  end
+        while not self._lastpopped do
+          coroutine.yield()
+          self._lastpopped = table.remove(self.queue, 1)
+          if self._lastpopped and self._lastpopped.cancelled then self._lastpopped = nil end
+        end
+        return self._lastpopped.data
+    end
+    ------------------------------------------------------
+    -- Yields control in case of lengthy operations. Similar to `worker:pop` except
+    -- that this method does not pop a new element from the `worker` queue.
+    -- @return `true`
+    function worker:pause()
+        assert(coroutine.running() == self.thread,"pause() may only be called by the workerthread itself")
+        table.insert(self.queue,1,true)  -- insert fake element; true
+        coroutine.yield()
+        return table.remove(self.queue, 1) -- returns the fake element; true
+    end
+    -- perform a single step for this worker
+    function worker:step()
+      local oldrunningworker = runningworker
+      runningworker = self
+      local success, err = coroutine.resume(self.thread)
+      runningworker = oldrunningworker
+      if not success then
+          pcall(self.errhandler, self.thread, err)
+      end
+      if coroutine.status(self.thread) ~= "dead" then
+          -- coroutine is still alive
+          if not self._hasbeenremoved then -- double check the worker didn't remove itself
+              if #self.queue > 0 then
+                  pushthread(self)   -- add thread to end of queue again for next run
               else
-                  -- coroutine has died, cancel all that is left in the queue
-                  if self._lastpopped then
-                    if success then
-                      self._lastpopped:complete()  -- exit was succesful, so mark as complete
-                    else
-                      self._lastpopped:cancel()    -- exit was an error, so mark as cancelled
-                    end
-                  end
-                  while self.queue[1] do
-                      local item = table.remove(self.queue, 1)
-                      item:cancel()
-                  end
+                  -- nothing in queue, so move to inactive list
+                  inactiveworkers[self.thread] = self
               end
-            end,
-    }
+          else
+              self._hasbeenremoved = nil
+          end
+      else
+          -- coroutine has died, cancel all that is left in the queue
+          if self._lastpopped then
+            if success then
+              self._lastpopped:complete()  -- exit was succesful, so mark as complete
+            else
+              self._lastpopped:cancel()    -- exit was an error, so mark as cancelled
+            end
+          end
+          while self.queue[1] do
+              local item = table.remove(self.queue, 1)
+              item:cancel()
+          end
+      end
+    end
+    
     -- initialize coroutine by resuming, and store in list (queue empty, so inactive)
-    local success, err = coroutine.resume(t.thread,t)
-    if not success then pcall(t.errhandler, t.thread, err) end
-    inactiveworkers[t.thread] = t
-    return t
+    local success, err = coroutine.resume(worker.thread, worker)
+    if not success then pcall(worker.errhandler, worker.thread, err) end
+    inactiveworkers[worker.thread] = worker
+    return worker
 end
 
--------------------------------------------------------------------------------
 -- Runs work on background threads
--- @return <code>true</code> if workers remain with work to do, <code>false</code> otherwise
+-- @return[1] `true` if workers remain with work to do
+-- @return[2] `false` if all worker queues are empty
 local dowork = function()
     local t = popthread()   -- get next in line worker
     if t then
@@ -389,6 +377,10 @@ end
 --=============================================================================
 
 -------------------------------------------------------------------------------
+-- Timer functions.
+-- Creating and handling timers
+-- @section timers
+
 -- Remove an armed timer from the list of running timers
 local timerremove = function(t)
     if t == order then order = t.next end
@@ -401,7 +393,6 @@ local timerremove = function(t)
     end
 end
 
--------------------------------------------------------------------------------
 -- Add a newly armed timer to the list of timers running
 local timeradd = function (t)
     -- check existence
@@ -438,12 +429,11 @@ local timeradd = function (t)
     end
 end
 
--------------------------------------------------------------------------------
 -- Check timerlist whether next up timer has expired already
 -- @param precision up to how far in the future will a timer be considered expired
--- @return time until next timer expires
--- @return 0 if there is work to do (worker threads)
--- @return <code>nil</code> if there is neither a timer running nor there is work to do
+-- @return[1] time until the next timer expires
+-- @return[2] 0 if there is work to do (worker threads with non-empty queues)
+-- @return[3] `nil` if there is neither a timer running nor there is work to do
 local timercheck = function(precision)
     local result
     if order and (order.when <= (socket.gettime() + precision)) then
@@ -480,104 +470,7 @@ local startexittimer = function()
 end
 
 -------------------------------------------------------------------------------
--- Creates a new timer.
--- After creating call the <code>arm</code> method of the new timer to actually
--- schedule it. REMARK: the background workers run in their own thread (coroutine)
--- and hence need to yield control when their operation takes too long, but
--- the timers run on the main loop, and hence the callbacks should never
--- yield, in those cases consider adding a worker through
--- <code>copas.addworker()</code> from the timer callback.
--- @param f_arm callback function to execute when the timer is armed
--- @param f_expire callback function to execute when the timer expires
--- @param f_cancel callback function to execute when the timer is cancelled
--- @param recurring (boolean) should the timer automatically be re-armed with
--- the same interval after it expired
--- @param f_error callback function to execute (in a <code>xpcall()</code> call)
--- when any of the other callbacks generates an error
--- @usage -- Create a new timer
--- local t = copas.newtimer(nil, function () print("hello world") end, nil, false, nil)
--- &nbsp;
--- -- Create timer and arm it immediately, to be run in 5 seconds
--- copas.newtimer(nil, function () print("hello world") end, nil, false, nil):arm(5)
--- &nbsp;
--- -- Create timer and arm it immediately, to be run now (function f is provide twice!) and again every 5 seconds
--- local f = function () print("hello world") end
--- copas.newtimer(f, f, nil, true, nil):arm(5)
--- @see timer.arm
--- @see timer.cancel
--- @see copas.cancelall
-copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
-    return {
-        interval = nil,     -- must be set on first call to arm()
-        recurring = recurring,
-        -------------------------------------------------------------------------------
-        -- Arms a previously created timer. When <code>arm()</code> is called on an already
-        -- armed timer then the timer will be rescheduled, the <code>cancel</code> handler
-        -- will not be called in this case, but the <code>arm</code> handler will run.
-        -- @name timer.arm
-        -- @param self timer table
-        -- @param interval the interval after which the timer expires (in seconds). This must
-        -- be set with the first call to <code>arm()</code> any additional calls will reuse
-        -- the existing interval if no new interval is provided.
-        -- @return the timer <code>t</code>, which allows chaining creating/arming calls, see example.
-        -- @usage -- Create a new timer
-        -- local f = function() print("hello world") end
-        -- local t = copas.newtimer(nil, f, nil, false)
-        -- t:arm(5)              -- arm it at 5 seconds
-        -- -- which is equivalent to chaining the arm() call
-        -- local t = copas.newtimer(nil, f, nil, false):arm(5)
-        -- @see timer.cancel
-        -- @see copas.newtimer
-        arm = function(self, interval)
-            self.interval = interval or self.interval
-            assert(type(self.interval) == "number", "Interval not set, expected number, got " .. type(self.interval))
-            self.when = socket.gettime() + interval
-            -- if armed previously, remove myself
-            timerremove(self)
-            -- add to list
-            timeradd(self)
-            -- run ARM handler
-            if f_arm then coxpcall(f_arm, f_error or _missingTerrorhandler) end
-            return self
-        end,
-        expire = function(self)
-            -- remove from list
-            timerremove(self)
-            -- execute
-            if f_expire then coxpcall(f_expire, f_error or _missingTerrorhandler) end
-            -- set again if recurring
-            if self.recurring then
-                self.when = socket.gettime() + (self.interval or 1)
-                if not self._hasbeencancelled then
-                    -- if the 'expire' handler cancelled the timer, it failed because
-                    -- while executing it temporarily wasn't in the list
-                    timeradd(self)
-                end
-            end
-        end,
-        -------------------------------------------------------------------------------
-        -- Cancels a previously armed timer. This will run the <code>cancel</code> handler
-        -- provided when creating the timer.
-        -- @name timer.cancel
-        -- @param self timer table
-        -- @usage -- Create a new timer
-        -- local t = copas.newtimer(nil, function () print("hello world") end, nil, false)
-        -- t:arm(5)              -- arm it at 5 seconds
-        -- t:cancel()            -- cancel it again
-        -- @see timer.arm
-        -- @see copas.newtimer
-        cancel = function(self)
-            -- remove self from timer list
-            timerremove(self)
-            self._hasbeencancelled = true   -- in case it is cancelled by the 'expire' handler
-            -- run CANCEL handler
-            if f_cancel then coxpcall(f_cancel, f_error or _missingTerrorhandler) end
-        end,
-    }
-end
-
--------------------------------------------------------------------------------
--- Cancels all currently armed timers.
+-- Cancels all currently armed `timer` objects.
 -- @see copas.exitloop
 copas.cancelall = function()
     for _, t in pairs(timers) do
@@ -585,19 +478,121 @@ copas.cancelall = function()
     end
 end
 
+-------------------------------------------------------------------------------
+-- Creates a new `timer`.
+-- After creating call the `arm` method of the new `timer` to actually
+-- schedule it. REMARK: the background `worker` run on their own coroutine
+-- and hence need to yield control when their operation takes too long, but
+-- the `timer` run on the main loop, and hence the callbacks should never
+-- yield, in those cases consider adding a `worker` through
+-- `copas.addworker` from the `timer` callback.
+-- @tparam function f_arm callback function to execute when the `timer` is armed, or `nil`
+-- @tparam function f_expire callback function to execute when the `timer` expires
+-- @tparam function f_cancel callback function to execute when the `timer` is cancelled, or `nil`
+-- @tparam boolean recurring (boolean) should the `timer` automatically be re-armed with
+-- the same interval after it expired
+-- @tparam function f_error callback function to execute (in a `xpcall` call), or `nil` when any of the other callbacks generates an error
+-- @usage -- Create a new timer
+-- local t = copas.newtimer(nil, function () print("hello world") end, nil, false, nil)
+-- 
+-- -- Create timer and arm it immediately, to be run in 5 seconds
+-- copas.newtimer(nil, function () print("hello world") end, nil, false, nil):arm(5)
+-- 
+-- -- Create timer and arm it immediately, to be run now (function f is provide twice!) and again every 5 seconds
+-- local f = function () print("hello world") end
+-- copas.newtimer(f, f, nil, true, nil):arm(5)
+-- @see timer
+copas.newtimer = function(f_arm, f_expire, f_cancel, recurring, f_error)
+    local timer = {
+        interval = nil,     -- must be set on first call to arm()
+        recurring = recurring,
+    }
+
+-------------------------------------------------------------------------------
+-- Timer class.
+-- @type timer
+
+    -------------------------------------------------------------------------------
+    -- Arms a previously created `timer`. When `arm` is called on an already
+    -- armed timer then the timer will be rescheduled, the `cancel` handler
+    -- will not be called in this case, but the `arm` handler will run.
+    -- @tparam number interval the interval after which the timer expires (in seconds). This must
+    -- be set with the first call to `arm` any additional calls will reuse
+    -- the existing interval if no new interval is provided.
+    -- @return `timer`
+    -- @usage -- Create a new timer
+    -- local f = function() print("hello world") end
+    -- local t = copas.newtimer(nil, f, nil, false)
+    -- t:arm(5)              -- arm it at 5 seconds
+    -- -- which is equivalent to chaining the arm() call
+    -- local t = copas.newtimer(nil, f, nil, false):arm(5)
+    -- @see timer:cancel
+    -- @see copas.newtimer
+    function timer:arm(interval)
+        self.interval = interval or self.interval
+        assert(type(self.interval) == "number", "Interval not set, expected number, got " .. type(self.interval))
+        self.when = socket.gettime() + interval
+        -- if armed previously, remove myself
+        timerremove(self)
+        -- add to list
+        timeradd(self)
+        -- run ARM handler
+        if f_arm then coxpcall(f_arm, f_error or _missingTerrorhandler) end
+        return self
+    end
+    function timer:expire()
+        -- remove from list
+        timerremove(self)
+        -- execute
+        if f_expire then coxpcall(f_expire, f_error or _missingTerrorhandler) end
+        -- set again if recurring
+        if self.recurring then
+            self.when = socket.gettime() + (self.interval or 1)
+            if not self._hasbeencancelled then
+                -- if the 'expire' handler cancelled the timer, it failed because
+                -- while executing it temporarily wasn't in the list
+                timeradd(self)
+            end
+        end
+    end
+    -------------------------------------------------------------------------------
+    -- Cancels a previously armed timer. This will run the `cancel` handler
+    -- provided when creating the `timer`.
+    -- @usage -- Create a new timer
+    -- local t = copas.newtimer(nil, function () print("hello world") end, nil, false)
+    -- t:arm(5)              -- arm it at 5 seconds
+    -- t:cancel()            -- cancel it again
+    -- @see timer:arm
+    -- @see copas.newtimer
+    function timer:cancel()
+        -- remove self from timer list
+        timerremove(self)
+        self._hasbeencancelled = true   -- in case it is cancelled by the 'expire' handler
+        -- run CANCEL handler
+        if f_cancel then coxpcall(f_cancel, f_error or _missingTerrorhandler) end
+    end
+    return timer
+end
+
+
 --=============================================================================
 --               COPAS CORE
 --=============================================================================
 
+-------------------------------------------------------------------------------
+-- Copas core.
+-- Adapted base functions and some additional ones.
+-- @section core
 
 -------------------------------------------------------------------------------
 -- Executes a single Copas step followed by the execution of the first expired
--- (if any) timer in the timers list (it replaces the original <code>copas.step()</code>)
--- if there is no timer that expires then it will try to execute a worker step if available.
--- @param timeout timeout value (in seconds) to pass to the Copas step handler
--- @param precision see parameter <code>precision</code> at function <code>loop()</code>.
--- @return time in seconds until the next timer in the list expires, 0 if there is a worker
--- waiting for execution, or <code>nil</code> if there is no timer nor any worker.
+-- (if any) `timer` in the timers list (it replaces the original `copas.step`)
+-- if there is no `timer` that expires then it will try to execute a `worker` if available.
+-- @tparam number timeout timeout value (in seconds) to pass to the _original_ Copas step handler 
+-- @tparam number precision see parameter `precision` at function `copas.loop`
+-- @return[1] time in seconds until the next `timer` in the list expires
+-- @return[2] 0 if there are `worker` objects with non-empty queues
+-- @return[3] `nil` if there is no `timer` nor any `worker` with work to do
 -- @see copas.loop
 copas.step = function (timeout, precision)
     copasstep(timeout)  -- call original copas step function
@@ -605,16 +600,16 @@ copas.step = function (timeout, precision)
 end
 
 -------------------------------------------------------------------------------
--- Executes an endless loop handling Copas steps and timers  (it replaces the original <code>copas.loop()</code>).
--- The loop can be terminated by calling <code>exitloop</code>.
--- @param timeout time out (in seconds) to be used. The timer list
--- will be checked at least every <code>timeout</code> period for expired timers. The
--- actual interval will be between <code>0</code> and <code>timeout</code> based on the next
--- timers expire time or worker threads being available. If not provided, it defaults to 5 seconds.
--- @param precision the precision of the timer (in seconds). Whenever the timer
--- list is checked for expired timers, a timer is considered expired when the exact
--- expire time is in the past or up to <code>precision</code> seconds in the future.
--- It defaults to 0.02 if not provided.
+-- Executes an endless loop handling Copas steps and timers  (it replaces the original `copas.loop`).
+-- The loop can be terminated by calling `copas.exitloop`.
+-- @tparam number timeout time out (in seconds) to be used. The `timer` list
+-- will be checked at least every `timeout` period for expired timers. The
+-- actual interval will be between `0` and `timeout` based on the next
+-- timers expire time or `worker` threads being available. If not provided, it defaults to 5 seconds.
+-- @tparam number precision the precision of the `timer` (in seconds). Whenever the timer
+-- list is checked for expired timers, a `timer` is considered expired when the exact
+-- expire time is in the past, or up to `precision` seconds in the future.
+-- It defaults to `0.02` if not provided.
 -- @see copas.step
 -- @see copas.exitloop
 -- @see copas.isexiting
@@ -701,33 +696,30 @@ end
 
 -------------------------------------------------------------------------------
 -- Indicator of the loop running or exiting.
--- @return <ul>
--- <li><code>nil</code>: the loop is not running, </li>
--- <li><code>false</code>: the loop is running, or </li>
--- <li><code>true</code>: the loop is scheduled to stop</li></ul>
+-- @return[1] `nil` when the loop is not running
+-- @return[2] `false` when the loop is running
+-- @return[3] `true` when the loop is scheduled to stop
 -- @usage if copas.isexiting() ~= nil then
 --     -- loop is currently running, make it exit after the worker queue is empty and cancel any timers
 --     copas.exitloop(nil, false)
 -- end
--- @see copas.loop
 -- @see copas.exitloop
 copas.isexiting = function()
     return exiting
 end
 
 -------------------------------------------------------------------------------
--- Instructs Copas to exit the loop. It will wait for any background workers to complete their queue.
--- If the <code>copas.eventer</code> is used then the timeout will only start after the
--- <code>copas.events.loopstopping</code> event has been completely handled.
--- @param timeout Timeout (in seconds) after which to forcefully exit the loop,
--- abandoning any workers still running.
--- <ul><li><code>nil</code> or negative: no timeout, continue running until all workers have emptied their queues</li>
--- <li><code>&lt 0</code>: exit immediately after next loop iteration, do not
--- wait for workers nor the <code>copas.events.loopstopping/loopstopped</code> events</li> to complete
--- (timers will still be cancelled if set to do so)</ul>
--- @param keeptimers (boolean) if <code>true</code> then the active timers will NOT be cancelled, otherwise
--- <code>copas.cancelall()</code> will be called to properly cancel all running timers.
--- @see copas.loop
+-- Instructs Copas to exit the loop. It will wait for any background `worker` to complete their queue.
+-- If the `copas.eventer` is used then the timeout will only start after the
+-- `copas.events.loopstopping` event has been completely handled.
+-- @tparam number timeout Timeout (in seconds) after which to forcefully exit the loop,
+-- abandoning any `worker` still running.
+-- <ul><li>`nil`: no timeout, continue running until all workers have emptied their queues</li>
+-- <li>`< 0`: exit immediately after next loop iteration, do not
+-- wait for workers nor the `copas.events.loopstopping/loopstopped` events to complete
+-- (timers will still be cancelled if set to do so)</li></ul>
+-- @tparam boolean keeptimers if `true` then the active timers will NOT be cancelled, otherwise
+-- `copas.cancelall` will be called to properly cancel all running timers.
 -- @see copas.isexiting
 copas.exitloop = function(timeout, keeptimers)
     if exiting == false then
@@ -753,17 +745,23 @@ end
 --=============================================================================
 
 -------------------------------------------------------------------------------
+-- Utility functions.
+-- Some useful functions using timers, for timed actions and checks.
+-- @section utilities
+
+-------------------------------------------------------------------------------
 -- Calls a function delayed, after the specified amount of time.
 -- An example use is a call that requires communications to be running already,
 -- but if you start the Copas loop, it basically blocks; classic chicken-egg. In this case use the
--- <code>delayedexecutioner</code> to call the method in 0.5 seconds, just before
+-- `delayedexecutioner` to call the method in 0.5 seconds, just before
 -- starting the CopasTimer loop. Now when the method actually executes, communications
--- will be online already. The internals use a timer, so it is executed on the main
--- loop and should not be suspended by calling <code>yield()</code>.
--- @param delay delay in seconds before calling the function
--- @param func function to call
+-- will be online already. The internals use a `timer`, so it is executed on the main
+-- loop and should not be suspended by calling `yield()`.
+-- @tparam number delay delay in seconds before calling the function
+-- @tparam function func function to call
 -- @param ... any arguments to be passed to the function
 -- @see copas.newtimer
+-- @return `timer` implementing the delay
 -- @usage local t = socket.gettime()
 -- copas.delayedexecutioner(5, function(txt)
 --         print(txt .. " and it was " .. socket.gettime() - t .. " to be precise.")
@@ -774,37 +772,36 @@ copas.delayedexecutioner = function (delay, func, ...)
     local f = function()
         func(unpack(list))
     end
-    copas.newtimer(nil, f, nil, false):arm(delay)
+    return copas.newtimer(nil, f, nil, false):arm(delay)
 end
 
 
 -------------------------------------------------------------------------------
 -- Executes a handler function after a specific condition has been met
--- (non-blocking wait). This is implemented using a timer, hence both the
--- <code>condition()</code> and <code>handler()</code> functions run on the main
+-- (non-blocking wait). This is implemented using a `timer`, hence both the
+-- `condition` and `handler` functions run on the main
 -- thread and should never yield.
--- @param interval interval (in seconds) for checking the condition
--- @param timeout timeout value (in seconds) after which the operation fails
--- (note that the <code>handler()</code> will still be called)
--- @param condition a function that is called repeatedly. It will get the
--- additional parameters specified to <code>waitforcondition()</code>. The
--- function should return <code>true</code> or <code>false</code> depending on
+-- @tparam number interval interval (in seconds) for checking the condition
+-- @tparam number timeout timeout value (in seconds) after which the operation fails
+-- (note that the `handler()` will still be called)
+-- @tparam function condition a function that is called repeatedly. It will get the
+-- additional parameters specified to `waitforcondition`. The
+-- function should return `true` or `false` depending on
 -- whether the condition was met.
--- @param handler the handler function that will be executed. It will
+-- @tparam function handler the handler function that will be executed. It will
 -- <strong>always</strong> be executed. The first argument to the handler will
--- be <code>true</code> if the condition was met, or <code>false</code> if the
+-- be `true` if the condition was met, or `false` if the
 -- operation timed-out, any additional parameters provided to
--- <code>waitforcondition()</code> will be passed after that.
--- @param ... additional parameters passed on to both the <code>condition()</code>
--- and <code>handler()</code> functions.
--- @return timer that verifies the condition.
+-- `waitforcondition` will be passed after that.
+-- @param ... additional parameters passed on to both the `condition` and `handler` functions.
+-- @return `timer` that verifies the condition.
 -- @usage local count = 1
 -- function check(param)
 --     print("Check count ", count, ". Called using param = ", param)
 --     count = count + 1
 --     return (count == 10)
 -- end
--- &nbsp
+-- 
 -- function done(conditionmet, param)
 --     if conditionmet then
 --         print("The condition was met when count reached ", count - 1,". Called using param = ", param)
@@ -812,7 +809,7 @@ end
 --         print("Failed, condition was not met. Called using param = ", param)
 --     end
 -- end
--- &nbsp
+-- 
 -- copas.waitforcondition(0.1, 5, check, done, "1234567890")
 copas.waitforcondition = function (interval, timeout, condition, handler, ...)
     assert (interval,'No interval provided')

@@ -1,0 +1,1031 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>CopasTimer</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>CopasTimer</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Backgroundworkers">Backgroundworkers </a></li>
+<li><a href="#Class_queueitem">Class queueitem </a></li>
+<li><a href="#Backgroundworkers">Backgroundworkers</a></li>
+<li><a href="#Class_worker">Class worker </a></li>
+<li><a href="#Timer_functions">Timer functions </a></li>
+<li><a href="#Class_timer">Class timer </a></li>
+<li><a href="#Copas_core">Copas core </a></li>
+<li><a href="#Utility_functions">Utility functions </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/eventer.html">eventer</a></li>
+  <li><strong>timer</strong></li>
+</ul>
+<h2>Topics</h2>
+<ul class="nowrap">
+  <li><a href="../topics/readme.md.html">readme.md</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>timer</code></h1>
+
+<p>Copas Timer is a module that adds a timer capability to the Copas scheduler.</p>
+<p> It provides the same base functions <a href="../modules/timer.html#copas.step">copas.step</a>  and <a href="../modules/timer.html#copas.loop">copas.loop</a>
+ as Copas (it actually replaces them) except that it will also check for (and
+ run) <a href="../modules/timer.html#">timer</a>  expiring and run background <a href="../modules/timer.html#Class_worker">worker</a>  if there is no IO or <a href="../modules/timer.html#">timer</a>  to
+ handle.</p>
+
+<p> To use the module it should be required as; <code>local copas =
+ require("copas.timer")</code> because it returns the global <code>copas</code>
+ table and not a separate timer table.</p>
+
+<p> There is a difference between the 2 background mechanisms provided; the
+ <a href="../modules/timer.html#">timer</a>  runs on the main loop, and hence should never yield. The <a href="../modules/timer.html#Class_worker">worker</a>  runs in
+ their own thread (coroutine) and can be yielded (<a href="../modules/timer.html#worker:pause">worker:pause</a> ) if they take too long.</p>
+
+<p> The workers are dispatched from a rotating queue, so when a worker is up to run
+ it will be removed from the queue, resumed, and (if not finished) added at the end
+ of the queue again.</p>
+    <h3>Info:</h3>
+    <ul>
+        <li><strong>Release</strong>: Version 1.0, Timer module to extend Copas with a timer, worker and event capabilities</li>
+        <li><strong>License</strong>: Copas Timer is free software under the MIT/X11 license.</li>
+        <li><strong>Author</strong>: Thijs Schreijer, http://www.thijsschreijer.nl</li>
+        <li><strong>Copyright</strong>: 2011-2013 Thijs Schreijer</li>
+    </ul>
+
+
+<h2><a href="#Backgroundworkers">Backgroundworkers </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#copas.addworker">copas.addworker (func, errhandler)</a></td>
+	<td class="summary">Creates a <a href="../modules/timer.html#Class_worker">worker</a>  and adds it to the Copas scheduler.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#copas.getworker">copas.getworker (t)</a></td>
+	<td class="summary">Returns a background <a href="../modules/timer.html#Class_worker">worker</a> .</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#copas.removeworker">copas.removeworker (t)</a></td>
+	<td class="summary">Removes a <a href="../modules/timer.html#Class_worker">worker</a>  from the Copas scheduler.</td>
+	</tr>
+</table>
+<h2><a href="#Class_queueitem">Class queueitem </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#queueitem:cancel">queueitem:cancel ()</a></td>
+	<td class="summary">Cancels the <a href="../modules/timer.html#Class_queueitem">queueitem</a> .</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#queueitem:complete">queueitem:complete ()</a></td>
+	<td class="summary">Marks the <a href="../modules/timer.html#Class_queueitem">queueitem</a>  as completed.</td>
+	</tr>
+</table>
+<h2><a href="#Backgroundworkers">Backgroundworkers</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#copas.addworker">copas.addworker (func, errhandler)</a></td>
+	<td class="summary">Creates a <a href="../modules/timer.html#Class_worker">worker</a>  and adds it to the Copas scheduler.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#copas.getworker">copas.getworker (t)</a></td>
+	<td class="summary">Returns a background <a href="../modules/timer.html#Class_worker">worker</a> .</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#copas.removeworker">copas.removeworker (t)</a></td>
+	<td class="summary">Removes a <a href="../modules/timer.html#Class_worker">worker</a>  from the Copas scheduler.</td>
+	</tr>
+</table>
+<h2><a href="#Class_worker">Class worker </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#worker:pause">worker:pause ()</a></td>
+	<td class="summary">Yields control in case of lengthy operations.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#worker:pop">worker:pop ()</a></td>
+	<td class="summary">Retrieves data from the <a href="../modules/timer.html#Class_worker">worker</a>  queue (and implicitly yields control).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#worker:push">worker:push (data)</a></td>
+	<td class="summary">Adds data to the <a href="../modules/timer.html#Class_worker">worker</a>  queue.</td>
+	</tr>
+</table>
+<h2><a href="#Timer_functions">Timer functions </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#copas.cancelall">copas.cancelall ()</a></td>
+	<td class="summary">Cancels all currently armed <a href="../modules/timer.html#">timer</a>  objects.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#copas.newtimer">copas.newtimer (f_arm, f_expire, f_cancel, recurring, f_error)</a></td>
+	<td class="summary">Creates a new <a href="../modules/timer.html#">timer</a> .</td>
+	</tr>
+</table>
+<h2><a href="#Class_timer">Class timer </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#timer:arm">timer:arm (interval)</a></td>
+	<td class="summary">Arms a previously created <a href="../modules/timer.html#">timer</a> .</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#timer:cancel">timer:cancel ()</a></td>
+	<td class="summary">Cancels a previously armed timer.</td>
+	</tr>
+</table>
+<h2><a href="#Copas_core">Copas core </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#copas.exitloop">copas.exitloop (timeout, keeptimers)</a></td>
+	<td class="summary">Instructs Copas to exit the loop.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#copas.isexiting">copas.isexiting ()</a></td>
+	<td class="summary">Indicator of the loop running or exiting.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#copas.loop">copas.loop (timeout, precision)</a></td>
+	<td class="summary">Executes an endless loop handling Copas steps and timers  (it replaces the original <a href="../modules/timer.html#copas.loop">copas.loop</a> ).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#copas.step">copas.step (timeout, precision)</a></td>
+	<td class="summary">Executes a single Copas step followed by the execution of the first expired
+ (if any) <a href="../modules/timer.html#">timer</a>  in the timers list (it replaces the original <a href="../modules/timer.html#copas.step">copas.step</a> )
+ if there is no <a href="../modules/timer.html#">timer</a>  that expires then it will try to execute a <a href="../modules/timer.html#Class_worker">worker</a>  if available.</td>
+	</tr>
+</table>
+<h2><a href="#Utility_functions">Utility functions </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#copas.delayedexecutioner">copas.delayedexecutioner (delay, func, ...)</a></td>
+	<td class="summary">Calls a function delayed, after the specified amount of time.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#copas.waitforcondition">copas.waitforcondition (interval, timeout, condition, handler, ...)</a></td>
+	<td class="summary">Executes a handler function after a specific condition has been met
+ (non-blocking wait).</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2><a name="Backgroundworkers"></a>Backgroundworkers </h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "copas.addworker"></a>
+    <strong>copas.addworker (func, errhandler)</strong>
+    </dt>
+    <dd>
+    Creates a <a href="../modules/timer.html#Class_worker">worker</a>  and adds it to the Copas scheduler.  The workers will be executed when there is no IO nor
+ any expiring <a href="../modules/timer.html#">timer</a>  to run. The function will be started immediately upon
+ creating the coroutine for the worker. Calling <a href="../modules/timer.html#worker:push">worker:push</a>  on
+ the returned worker table will enqueue data to be handled. The function can
+ fetch data from the queue through <a href="../modules/timer.html#worker:pop">worker:pop</a>  which will
+ pop a new element from the workers queue. For lengthy operations where the code needs
+ to yield without popping a new element from the queue, call <a href="../modules/timer.html#worker:pause">worker:pause</a> .
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">func</span>
+            <span class="types"><span class="type">function</span></span>
+         function to execute as the coroutine
+        </li>
+        <li><span class="parameter">errhandler</span>
+            <span class="types"><span class="type">function</span></span>
+         function to handle any errors returned or <code>nil</code> (should be a function taking 2 arguments; 1 - coroutine generating the error, 2 - returned error)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <a href="../modules/timer.html#Class_worker">worker</a>
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/timer.html#copas.removeworker">copas.removeworker</a>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="keyword">local</span> w = copas.addworker(<span class="keyword">function</span>(queue)
+         <span class="comment">-- do some initializing here... will be run immediately upon
+</span>         <span class="comment">-- adding the worker
+</span>         <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+             data = queue:pop()    <span class="comment">-- fetch data from queue, implictly yields the coroutine
+</span>             <span class="comment">-- handle the retrieved data here
+</span>             <span class="global">print</span>(data)
+             <span class="comment">-- do some lengthy stuff
+</span>             queue:pause()         <span class="comment">-- implicitly yields
+</span>             <span class="comment">-- do more lengthy stuff
+</span>         <span class="keyword">end</span>
+     <span class="keyword">end</span>)
+ <span class="comment">-- enqueue data for the new worker
+</span> w:push(<span class="string">"here is some data"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "copas.getworker"></a>
+    <strong>copas.getworker (t)</strong>
+    </dt>
+    <dd>
+    Returns a background <a href="../modules/timer.html#Class_worker">worker</a> .
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">t</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.1/manual.html#5.2">coroutine</a></span>
+         coroutine to look up
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        the <a href="../modules/timer.html#Class_worker">worker</a>  table (as earlier returned by <a href="../modules/timer.html#copas.addworker">copas.addworker</a> )
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+        <code>nil</code> if the coroutine wasn't found
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/timer.html#copas.addworker">copas.addworker</a>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="keyword">if</span> copas.getworker(<span class="global">coroutine</span>.running()) <span class="keyword">then</span>
+     <span class="global">print</span> (<span class="string">"I'm running as a background worker"</span>)
+ <span class="keyword">else</span>
+     <span class="global">print</span> (<span class="string">"No background worker found, so I'm on my own"</span>)
+ <span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "copas.removeworker"></a>
+    <strong>copas.removeworker (t)</strong>
+    </dt>
+    <dd>
+    Removes a <a href="../modules/timer.html#Class_worker">worker</a>  from the Copas scheduler.
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">t</span>
+         coroutine or <a href="../modules/timer.html#Class_worker">worker</a>  object to be removed
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <a href="../modules/timer.html#Class_worker">worker</a>
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+        <code>nil</code> if the coroutine/worker wasn't found
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2><a name="Class_queueitem"></a>Class queueitem </h2>
+
+ Object created by <a href="../modules/timer.html#worker:push">worker:push</a>  when data is pushed into the <a href="../modules/timer.html#Class_worker">worker</a>  queue. This
+ object can be tracked for progress or cancellation.
+    <dl class="function">
+    <dt>
+    <a name = "queueitem:cancel"></a>
+    <strong>queueitem:cancel ()</strong>
+    </dt>
+    <dd>
+    Cancels the <a href="../modules/timer.html#Class_queueitem">queueitem</a> .
+ When cancelling both the <code>cancelled</code> and <code>completed</code>
+ flag will be set. The <code>cancelled</code> flag will prevent the data from being executed
+ when it is being popped from the queue.
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "queueitem:complete"></a>
+    <strong>queueitem:complete ()</strong>
+    </dt>
+    <dd>
+    Marks the <a href="../modules/timer.html#Class_queueitem">queueitem</a>  as completed.
+ The <code>completed</code> flag will be set. Generally there is no need to call this method, it will
+ be called when the <a href="../modules/timer.html#Class_worker">worker</a>  handling this element pops the next element from its queue.
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2><a name="Backgroundworkers"></a>Backgroundworkers</h2>
+    <dl class="function">
+    <dt>
+    <a name = "copas.addworker"></a>
+    <strong>copas.addworker (func, errhandler)</strong>
+    </dt>
+    <dd>
+    Creates a <a href="../modules/timer.html#Class_worker">worker</a>  and adds it to the Copas scheduler.  The workers will be executed when there is no IO nor
+ any expiring <a href="../modules/timer.html#">timer</a>  to run. The function will be started immediately upon
+ creating the coroutine for the worker. Calling <a href="../modules/timer.html#worker:push">worker:push</a>  on
+ the returned worker table will enqueue data to be handled. The function can
+ fetch data from the queue through <a href="../modules/timer.html#worker:pop">worker:pop</a>  which will
+ pop a new element from the workers queue. For lengthy operations where the code needs
+ to yield without popping a new element from the queue, call <a href="../modules/timer.html#worker:pause">worker:pause</a> .
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">func</span>
+            <span class="types"><span class="type">function</span></span>
+         function to execute as the coroutine
+        </li>
+        <li><span class="parameter">errhandler</span>
+            <span class="types"><span class="type">function</span></span>
+         function to handle any errors returned or <code>nil</code> (should be a function taking 2 arguments; 1 - coroutine generating the error, 2 - returned error)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <a href="../modules/timer.html#Class_worker">worker</a>
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/timer.html#copas.removeworker">copas.removeworker</a>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="keyword">local</span> w = copas.addworker(<span class="keyword">function</span>(queue)
+         <span class="comment">-- do some initializing here... will be run immediately upon
+</span>         <span class="comment">-- adding the worker
+</span>         <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+             data = queue:pop()    <span class="comment">-- fetch data from queue, implictly yields the coroutine
+</span>             <span class="comment">-- handle the retrieved data here
+</span>             <span class="global">print</span>(data)
+             <span class="comment">-- do some lengthy stuff
+</span>             queue:pause()         <span class="comment">-- implicitly yields
+</span>             <span class="comment">-- do more lengthy stuff
+</span>         <span class="keyword">end</span>
+     <span class="keyword">end</span>)
+ <span class="comment">-- enqueue data for the new worker
+</span> w:push(<span class="string">"here is some data"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "copas.getworker"></a>
+    <strong>copas.getworker (t)</strong>
+    </dt>
+    <dd>
+    Returns a background <a href="../modules/timer.html#Class_worker">worker</a> .
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">t</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.1/manual.html#5.2">coroutine</a></span>
+         coroutine to look up
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        the <a href="../modules/timer.html#Class_worker">worker</a>  table (as earlier returned by <a href="../modules/timer.html#copas.addworker">copas.addworker</a> )
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+        <code>nil</code> if the coroutine wasn't found
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/timer.html#copas.addworker">copas.addworker</a>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="keyword">if</span> copas.getworker(<span class="global">coroutine</span>.running()) <span class="keyword">then</span>
+     <span class="global">print</span> (<span class="string">"I'm running as a background worker"</span>)
+ <span class="keyword">else</span>
+     <span class="global">print</span> (<span class="string">"No background worker found, so I'm on my own"</span>)
+ <span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "copas.removeworker"></a>
+    <strong>copas.removeworker (t)</strong>
+    </dt>
+    <dd>
+    Removes a <a href="../modules/timer.html#Class_worker">worker</a>  from the Copas scheduler.
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">t</span>
+         coroutine or <a href="../modules/timer.html#Class_worker">worker</a>  object to be removed
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <a href="../modules/timer.html#Class_worker">worker</a>
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+        <code>nil</code> if the coroutine/worker wasn't found
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2><a name="Class_worker"></a>Class worker </h2>
+
+ This class represents a <a href="../modules/timer.html#Class_worker">worker</a>  and its queue with <a href="../modules/timer.html#Class_queueitem">queueitem</a>  objects. It can be used to manipulate the worker and push data to it.
+    <dl class="function">
+    <dt>
+    <a name = "worker:pause"></a>
+    <strong>worker:pause ()</strong>
+    </dt>
+    <dd>
+    Yields control in case of lengthy operations.  Similar to <a href="../modules/timer.html#worker:pop">worker:pop</a>  except
+ that this method does not pop a new element from the <a href="../modules/timer.html#Class_worker">worker</a>  queue.
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <code>true</code>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "worker:pop"></a>
+    <strong>worker:pop ()</strong>
+    </dt>
+    <dd>
+    Retrieves data from the <a href="../modules/timer.html#Class_worker">worker</a>  queue (and implicitly yields control).  Note that this method
+ implicitly yields the coroutine until new data has been pushed in the <a href="../modules/timer.html#Class_worker">worker</a>  queue.
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        data field of the next <a href="../modules/timer.html#Class_queueitem">queueitem</a>  popped from the queue
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "worker:push"></a>
+    <strong>worker:push (data)</strong>
+    </dt>
+    <dd>
+    Adds data to the <a href="../modules/timer.html#Class_worker">worker</a>  queue.  If the <a href="../modules/timer.html#Class_worker">worker</a>  has died, it will return an error
+ and nothing will be enqueued.
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">data</span>
+         Data (any type) to be added to the queue of the <a href="../modules/timer.html#Class_worker">worker</a>
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <a href="../modules/timer.html#Class_queueitem">queueitem</a>  that was added to the <a href="../modules/timer.html#Class_worker">worker</a>  queue
+    </ol>
+     <h3>Or</h3>
+    <ol>
+        <li>
+        <code>nil</code></li>
+        <li>
+        error message</li>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> w = copas.addworker(myfunc)
+ w:push(<span class="string">"some data"</span>)</pre>
+    </ul>
+
+</dd>
+</dl>
+    <h2><a name="Timer_functions"></a>Timer functions </h2>
+
+ Creating and handling timers
+    <dl class="function">
+    <dt>
+    <a name = "copas.cancelall"></a>
+    <strong>copas.cancelall ()</strong>
+    </dt>
+    <dd>
+    Cancels all currently armed <a href="../modules/timer.html#">timer</a>  objects.
+
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/timer.html#copas.exitloop">copas.exitloop</a>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "copas.newtimer"></a>
+    <strong>copas.newtimer (f_arm, f_expire, f_cancel, recurring, f_error)</strong>
+    </dt>
+    <dd>
+    Creates a new <a href="../modules/timer.html#">timer</a> .
+ After creating call the <code>arm</code> method of the new <a href="../modules/timer.html#">timer</a>  to actually
+ schedule it. REMARK: the background <a href="../modules/timer.html#Class_worker">worker</a>  run on their own coroutine
+ and hence need to yield control when their operation takes too long, but
+ the <a href="../modules/timer.html#">timer</a>  run on the main loop, and hence the callbacks should never
+ yield, in those cases consider adding a <a href="../modules/timer.html#Class_worker">worker</a>  through
+ <a href="../modules/timer.html#copas.addworker">copas.addworker</a>  from the <a href="../modules/timer.html#">timer</a>  callback.
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">f_arm</span>
+            <span class="types"><span class="type">function</span></span>
+         callback function to execute when the <a href="../modules/timer.html#">timer</a>  is armed, or <code>nil</code>
+        </li>
+        <li><span class="parameter">f_expire</span>
+            <span class="types"><span class="type">function</span></span>
+         callback function to execute when the <a href="../modules/timer.html#">timer</a>  expires
+        </li>
+        <li><span class="parameter">f_cancel</span>
+            <span class="types"><span class="type">function</span></span>
+         callback function to execute when the <a href="../modules/timer.html#">timer</a>  is cancelled, or <code>nil</code>
+        </li>
+        <li><span class="parameter">recurring</span>
+            <span class="types"><span class="type">boolean</span></span>
+         (boolean) should the <a href="../modules/timer.html#">timer</a>  automatically be re-armed with
+ the same interval after it expired
+        </li>
+        <li><span class="parameter">f_error</span>
+            <span class="types"><span class="type">function</span></span>
+         callback function to execute (in a <a href="http://www.lua.org/manual/5.1/manual.html#pdf-xpcall">xpcall</a>  call), or <code>nil</code> when any of the other callbacks generates an error
+        </li>
+    </ul>
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/timer.html#">timer</a>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="comment">-- Create a new timer
+</span> <span class="keyword">local</span> t = copas.newtimer(<span class="keyword">nil</span>, <span class="keyword">function</span> () <span class="global">print</span>(<span class="string">"hello world"</span>) <span class="keyword">end</span>, <span class="keyword">nil</span>, <span class="keyword">false</span>, <span class="keyword">nil</span>)
+
+ <span class="comment">-- Create timer and arm it immediately, to be run in 5 seconds
+</span> copas.newtimer(<span class="keyword">nil</span>, <span class="keyword">function</span> () <span class="global">print</span>(<span class="string">"hello world"</span>) <span class="keyword">end</span>, <span class="keyword">nil</span>, <span class="keyword">false</span>, <span class="keyword">nil</span>):arm(<span class="number">5</span>)
+
+ <span class="comment">-- Create timer and arm it immediately, to be run now (function f is provide twice!) and again every 5 seconds
+</span> <span class="keyword">local</span> f = <span class="keyword">function</span> () <span class="global">print</span>(<span class="string">"hello world"</span>) <span class="keyword">end</span>
+ copas.newtimer(f, f, <span class="keyword">nil</span>, <span class="keyword">true</span>, <span class="keyword">nil</span>):arm(<span class="number">5</span>)</pre>
+    </ul>
+
+</dd>
+</dl>
+    <h2><a name="Class_timer"></a>Class timer </h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "timer:arm"></a>
+    <strong>timer:arm (interval)</strong>
+    </dt>
+    <dd>
+    Arms a previously created <a href="../modules/timer.html#">timer</a> .  When <code>arm</code> is called on an already
+ armed timer then the timer will be rescheduled, the <code>cancel</code> handler
+ will not be called in this case, but the <code>arm</code> handler will run.
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">interval</span>
+            <span class="types"><span class="type">number</span></span>
+         the interval after which the timer expires (in seconds). This must
+ be set with the first call to <code>arm</code> any additional calls will reuse
+ the existing interval if no new interval is provided.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <a href="../modules/timer.html#">timer</a>
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="../modules/timer.html#timer:cancel">timer:cancel</a></li>
+         <li><a href="../modules/timer.html#copas.newtimer">copas.newtimer</a></li>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="comment">-- Create a new timer
+</span> <span class="keyword">local</span> f = <span class="keyword">function</span>() <span class="global">print</span>(<span class="string">"hello world"</span>) <span class="keyword">end</span>
+ <span class="keyword">local</span> t = copas.newtimer(<span class="keyword">nil</span>, f, <span class="keyword">nil</span>, <span class="keyword">false</span>)
+ t:arm(<span class="number">5</span>)              <span class="comment">-- arm it at 5 seconds
+</span> <span class="comment">-- which is equivalent to chaining the arm() call
+</span> <span class="keyword">local</span> t = copas.newtimer(<span class="keyword">nil</span>, f, <span class="keyword">nil</span>, <span class="keyword">false</span>):arm(<span class="number">5</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "timer:cancel"></a>
+    <strong>timer:cancel ()</strong>
+    </dt>
+    <dd>
+    Cancels a previously armed timer.  This will run the <code>cancel</code> handler
+ provided when creating the <a href="../modules/timer.html#">timer</a> .
+
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="../modules/timer.html#timer:arm">timer:arm</a></li>
+         <li><a href="../modules/timer.html#copas.newtimer">copas.newtimer</a></li>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="comment">-- Create a new timer
+</span> <span class="keyword">local</span> t = copas.newtimer(<span class="keyword">nil</span>, <span class="keyword">function</span> () <span class="global">print</span>(<span class="string">"hello world"</span>) <span class="keyword">end</span>, <span class="keyword">nil</span>, <span class="keyword">false</span>)
+ t:arm(<span class="number">5</span>)              <span class="comment">-- arm it at 5 seconds
+</span> t:cancel()            -- cancel it again</pre>
+    </ul>
+
+</dd>
+</dl>
+    <h2><a name="Copas_core"></a>Copas core </h2>
+
+ Adapted base functions and some additional ones.
+    <dl class="function">
+    <dt>
+    <a name = "copas.exitloop"></a>
+    <strong>copas.exitloop (timeout, keeptimers)</strong>
+    </dt>
+    <dd>
+    Instructs Copas to exit the loop.  It will wait for any background <a href="../modules/timer.html#Class_worker">worker</a>  to complete their queue.
+ If the <code>copas.eventer</code> is used then the timeout will only start after the
+ <code>copas.events.loopstopping</code> event has been completely handled.
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         Timeout (in seconds) after which to forcefully exit the loop,
+ abandoning any <a href="../modules/timer.html#Class_worker">worker</a>  still running.
+ <ul><li><code>nil</code>: no timeout, continue running until all workers have emptied their queues</li>
+ <li><code>&lt; 0</code>: exit immediately after next loop iteration, do not
+ wait for workers nor the <code>copas.events.loopstopping/loopstopped</code> events to complete
+ (timers will still be cancelled if set to do so)</li></ul>
+        </li>
+        <li><span class="parameter">keeptimers</span>
+            <span class="types"><span class="type">boolean</span></span>
+         if <code>true</code> then the active timers will NOT be cancelled, otherwise
+ <a href="../modules/timer.html#copas.cancelall">copas.cancelall</a>  will be called to properly cancel all running timers.
+        </li>
+    </ul>
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/timer.html#copas.isexiting">copas.isexiting</a>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "copas.isexiting"></a>
+    <strong>copas.isexiting ()</strong>
+    </dt>
+    <dd>
+    Indicator of the loop running or exiting.
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <code>nil</code> when the loop is not running
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+        <code>false</code> when the loop is running
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+        <code>true</code> when the loop is scheduled to stop
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/timer.html#copas.exitloop">copas.exitloop</a>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="keyword">if</span> copas.isexiting() ~= <span class="keyword">nil</span> <span class="keyword">then</span>
+     <span class="comment">-- loop is currently running, make it exit after the worker queue is empty and cancel any timers
+</span>     copas.exitloop(<span class="keyword">nil</span>, <span class="keyword">false</span>)
+ <span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "copas.loop"></a>
+    <strong>copas.loop (timeout, precision)</strong>
+    </dt>
+    <dd>
+    Executes an endless loop handling Copas steps and timers  (it replaces the original <a href="../modules/timer.html#copas.loop">copas.loop</a> ).
+ The loop can be terminated by calling <a href="../modules/timer.html#copas.exitloop">copas.exitloop</a> .
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         time out (in seconds) to be used. The <a href="../modules/timer.html#">timer</a>  list
+ will be checked at least every <code>timeout</code> period for expired timers. The
+ actual interval will be between <code>0</code> and <code>timeout</code> based on the next
+ timers expire time or <a href="../modules/timer.html#Class_worker">worker</a>  threads being available. If not provided, it defaults to 5 seconds.
+        </li>
+        <li><span class="parameter">precision</span>
+            <span class="types"><span class="type">number</span></span>
+         the precision of the <a href="../modules/timer.html#">timer</a>  (in seconds). Whenever the timer
+ list is checked for expired timers, a <a href="../modules/timer.html#">timer</a>  is considered expired when the exact
+ expire time is in the past, or up to <code>precision</code> seconds in the future.
+ It defaults to <code>0.02</code> if not provided.
+        </li>
+    </ul>
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="../modules/timer.html#copas.step">copas.step</a></li>
+         <li><a href="../modules/timer.html#copas.exitloop">copas.exitloop</a></li>
+         <li><a href="../modules/timer.html#copas.isexiting">copas.isexiting</a></li>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "copas.step"></a>
+    <strong>copas.step (timeout, precision)</strong>
+    </dt>
+    <dd>
+    Executes a single Copas step followed by the execution of the first expired
+ (if any) <a href="../modules/timer.html#">timer</a>  in the timers list (it replaces the original <a href="../modules/timer.html#copas.step">copas.step</a> )
+ if there is no <a href="../modules/timer.html#">timer</a>  that expires then it will try to execute a <a href="../modules/timer.html#Class_worker">worker</a>  if available.
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         timeout value (in seconds) to pass to the <em>original</em> Copas step handler
+        </li>
+        <li><span class="parameter">precision</span>
+            <span class="types"><span class="type">number</span></span>
+         see parameter <code>precision</code> at function <a href="../modules/timer.html#copas.loop">copas.loop</a>
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        time in seconds until the next <a href="../modules/timer.html#">timer</a>  in the list expires
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+        0 if there are <a href="../modules/timer.html#Class_worker">worker</a>  objects with non-empty queues
+    </ol>
+     <h3>Or</h3>
+    <ol>
+
+        <code>nil</code> if there is no <a href="../modules/timer.html#">timer</a>  nor any <a href="../modules/timer.html#Class_worker">worker</a>  with work to do
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/timer.html#copas.loop">copas.loop</a>
+    </ul>
+
+
+</dd>
+</dl>
+    <h2><a name="Utility_functions"></a>Utility functions </h2>
+
+ Some useful functions using timers, for timed actions and checks.
+    <dl class="function">
+    <dt>
+    <a name = "copas.delayedexecutioner"></a>
+    <strong>copas.delayedexecutioner (delay, func, ...)</strong>
+    </dt>
+    <dd>
+    Calls a function delayed, after the specified amount of time.
+ An example use is a call that requires communications to be running already,
+ but if you start the Copas loop, it basically blocks; classic chicken-egg. In this case use the
+ <code>delayedexecutioner</code> to call the method in 0.5 seconds, just before
+ starting the CopasTimer loop. Now when the method actually executes, communications
+ will be online already. The internals use a <a href="../modules/timer.html#">timer</a> , so it is executed on the main
+ loop and should not be suspended by calling <code>yield()</code>.
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">delay</span>
+            <span class="types"><span class="type">number</span></span>
+         delay in seconds before calling the function
+        </li>
+        <li><span class="parameter">func</span>
+            <span class="types"><span class="type">function</span></span>
+         function to call
+        </li>
+        <li><span class="parameter">...</span>
+         any arguments to be passed to the function
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <a href="../modules/timer.html#">timer</a>  implementing the delay
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/timer.html#copas.newtimer">copas.newtimer</a>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="keyword">local</span> t = socket.gettime()
+ copas.delayedexecutioner(<span class="number">5</span>, <span class="keyword">function</span>(txt)
+         <span class="global">print</span>(txt .. <span class="string">" and it was "</span> .. socket.gettime() - t .. <span class="string">" to be precise."</span>)
+     <span class="keyword">end</span>, <span class="string">"This should display in 5 seconds from now."</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "copas.waitforcondition"></a>
+    <strong>copas.waitforcondition (interval, timeout, condition, handler, ...)</strong>
+    </dt>
+    <dd>
+    Executes a handler function after a specific condition has been met
+ (non-blocking wait).  This is implemented using a <a href="../modules/timer.html#">timer</a> , hence both the
+ <code>condition</code> and <code>handler</code> functions run on the main
+ thread and should never yield.
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">interval</span>
+            <span class="types"><span class="type">number</span></span>
+         interval (in seconds) for checking the condition
+        </li>
+        <li><span class="parameter">timeout</span>
+            <span class="types"><span class="type">number</span></span>
+         timeout value (in seconds) after which the operation fails
+ (note that the <code>handler()</code> will still be called)
+        </li>
+        <li><span class="parameter">condition</span>
+            <span class="types"><span class="type">function</span></span>
+         a function that is called repeatedly. It will get the
+ additional parameters specified to <code>waitforcondition</code>. The
+ function should return <code>true</code> or <code>false</code> depending on
+ whether the condition was met.
+        </li>
+        <li><span class="parameter">handler</span>
+            <span class="types"><span class="type">function</span></span>
+         the handler function that will be executed. It will
+ <strong>always</strong> be executed. The first argument to the handler will
+ be <code>true</code> if the condition was met, or <code>false</code> if the
+ operation timed-out, any additional parameters provided to
+ <code>waitforcondition</code> will be passed after that.
+        </li>
+        <li><span class="parameter">...</span>
+         additional parameters passed on to both the <code>condition</code> and <code>handler</code> functions.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <a href="../modules/timer.html#">timer</a>  that verifies the condition.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="keyword">local</span> count = <span class="number">1</span>
+ <span class="keyword">function</span> check(param)
+     <span class="global">print</span>(<span class="string">"Check count "</span>, count, <span class="string">". Called using param = "</span>, param)
+     count = count + <span class="number">1</span>
+     <span class="keyword">return</span> (count == <span class="number">10</span>)
+ <span class="keyword">end</span>
+
+ <span class="keyword">function</span> done(conditionmet, param)
+     <span class="keyword">if</span> conditionmet <span class="keyword">then</span>
+         <span class="global">print</span>(<span class="string">"The condition was met when count reached "</span>, count - <span class="number">1</span>,<span class="string">". Called using param = "</span>, param)
+     <span class="keyword">else</span>
+         <span class="global">print</span>(<span class="string">"Failed, condition was not met. Called using param = "</span>, param)
+     <span class="keyword">end</span>
+ <span class="keyword">end</span>
+
+ copas.waitforcondition(<span class="number">0.1</span>, <span class="number">5</span>, check, done, <span class="string">"1234567890"</span>)</pre>
+    </ul>
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.0</a></i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

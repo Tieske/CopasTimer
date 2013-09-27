@@ -26,12 +26,15 @@
 <br/>
 <h1>CopasTimer</h1>
 
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
 
 <h2>Contents</h2>
 <ul>
 <li><a href="#urpose">urpose </a></li>
 <li><a href="#sage">sage </a></li>
-<li><a href="#hangelog_">hangelog; </a></li>
+<li><a href="#hangelog">hangelog </a></li>
 </ul>
 
 
@@ -41,7 +44,8 @@
 </ul>
 <h2>Modules</h2>
 <ul class="nowrap">
-  <li><a href="../index.html">timer</a></li>
+  <li><a href="../modules/eventer.html">eventer</a></li>
+  <li><a href="../modules/timer.html">timer</a></li>
 </ul>
 
 </div>
@@ -180,10 +184,10 @@ my_module.start = <span class="keyword">function</span>(self)
 
 
 
-<p><a name="hangelog_"></a></p>
-<h2>Changelog;</h2>
+<p><a name="hangelog"></a></p>
+<h2>Changelog</h2>
 <h3>xx-xxx-2013; release 1.0</h3>
-<p>- background workers have been completely revised to work as coroutines instead of callbacks. This also reflects in the <code>eventer</code> module, where
+<p>- background workers have been completely revised to work as coroutines instead of callbacks. This also reflects in the <a href="../modules/eventer.html#">eventer</a>  module, where
 event handlers must now be setup as coroutines and get their event data from a queue.</p>
 
 <h3>07-Mar-2013; release 0.4.3</h3>
