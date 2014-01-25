@@ -19,7 +19,7 @@ end
 local errworker = copas.addworker(function(queue)
 	while true do
 		local data = queue:pop()
-		print("\n\n===========================\nAn error will follow; to show errorhandler output\n===========================")
+		print("\n\n===========================\nAn error will follow; to show worker errorhandler output\n===========================")
 		someerror()
 	end
 end)
@@ -48,8 +48,12 @@ local backgroundworker2 = function(queue)
         print("Worker 2 reporting " .. tostring(w2))
         -- worker 1 received its arguments, so pass some more
         local item, err = t1:push("  --==<< worker2 passes " .. w2 .. " to worker 1 >>==--  ")
-        if err then print("worker2:", err) end
-        if w2 > 20 then return end  -- thread dies
+        if err then
+          print("worker2:", err) 
+          print("Now exiting worker 2")
+          return  -- thread dies
+        end
+        if w2 > 20 then return end  -- will never be reached!
     end
 end
 local t2 = copas.addworker(backgroundworker2)
@@ -61,7 +65,7 @@ local cnt = 8
 local silly = function()
     cnt=cnt-1
     if lasttime then
-        print (cnt .. ": It's been " .. tostring(socket.gettime() - lasttime) .. " since we were here, silly how time flies...")
+        print (cnt .. ": It's been " .. tostring(socket.gettime() - lasttime) .. " seconds since we were here, silly how time flies...")
     end
     lasttime = socket.gettime()
     if cnt == 0 then
@@ -71,12 +75,12 @@ local silly = function()
         -- restart worker1
         w1 = 0
         t1 = copas.addworker(backgroundworker1)
-		t1:push("starting again from the timer")
+        t1:push("starting again from the timer")
     end
 end
 
 local errtimer=function()
-	print("\n\n===========================\nAn error will follow; to show errorhandler output\n===========================")
+	print("\n\n===========================\nAn error will follow; to show timer errorhandler output\n===========================")
 	someerror()
 end
 

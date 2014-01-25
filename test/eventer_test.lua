@@ -1,5 +1,3 @@
-
-
 local copas = require ("copas.timer")
 local ev = require("copas.eventer")
 local socket = require("socket")

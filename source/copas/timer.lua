@@ -10,11 +10,11 @@
 -- table and not a separate timer table.
 --
 -- There is a difference between the 2 background mechanisms provided; the
--- `timer` runs on the main loop, and hence should never yield. The `worker` runs in
--- their own thread (coroutine) and can be yielded (`worker:pause`) if they take too long.
+-- `timer` runs on the main loop, and hence should never yield. A `worker` runs in
+-- its own thread (coroutine) and can be yielded (`worker:pause`) if they take too long.
 --
 -- The workers are dispatched from a rotating queue, so when a worker is up to run
--- it will be removed from the queue, resumed, and (if not finished) added at the end
+-- it will be removed from the queue, resumed, and (if its queue isn't empty) added at the end
 -- of the queue again.
 --
 -- @author Thijs Schreijer, http://www.thijsschreijer.nl
@@ -41,13 +41,13 @@ local exitcanceltimers  -- should timers be cancelled after ending the loop
 local exittimeout       -- timeout for workers to exit
 local exittimer         -- timerhandling the exit timeout
 -- worker data
-local activeworkers = {}        -- list with background worker threads, currently scheduled
+local activeworkers = {}        -- list with background worker threads, currently scheduled, also by thread
 local inactiveworkers = {}      -- table with background workers, currently inactive, indexed by the thread
 local runningworker             -- the currently running worker table
 
 -- Will be used as error handler for timers if none provided
 local _missingTerrorhandler = function(...)
-	print("copas.timer: Error in timer callback: ",  ... )
+    print("copas.timer: Error in timer callback: ",  ... )
     print(debug.traceback())
 end
 
@@ -61,17 +61,84 @@ end
 --               BACKGROUND WORKERS
 --=============================================================================
 
+local newqueueitem = function(data, worker)
+
 -------------------------------------------------------------------------------
--- Backgroundworkers.
+-- QueueItem class.
+-- Object created by `worker:push` when data is pushed into the `worker` queue. This 
+-- object can be tracked for progress or cancellation.
+-- @type queueitem
+-- @see worker.push
+  
+
+  local queueitem = {
+      data = data,
+      worker = worker,  -- worker thread table
+      cancelled = nil,  -- set to true when cancelled
+      completed = nil,  -- set to true when completed
+  }
+
+---
+-- flag; `true` when the element has been completed or cancelled.
+-- 'completed' is when the worker is finished with it and requests the next element by calling its `worker:pop` function
+-- @field completed boolean
+
+---
+-- flag; `true` when the element has been cancelled.
+-- @field cancelled boolean
+
+---
+-- The `worker` object for which this `queueitem` has been enqueued.
+-- @field worker `worker` object
+
+---
+-- The actual data contained within the `queueitem`.
+-- @field data the actual data
+  
+  
+  -----------------------------------------------------------------------
+  -- Cancels the `queueitem`.
+  -- When cancelling both the `cancelled` and `completed`
+  -- flag will be set. The `cancelled` flag will prevent the data from being executed
+  -- when it is being popped from the queue.
+  function queueitem:cancel()
+      self.cancelled = true
+      self.completed = true
+  end
+  
+  -----------------------------------------------------------------------
+  -- Marks the `queueitem` as completed.
+  -- The `completed` flag will be set. Generally there is no need to call this method, it will
+  -- be called when the `worker` handling this element pops the next element from its queue.
+  function queueitem:complete()
+      self.completed = true
+  end
+  
+  return queueitem
+end
+
+
+
+-------------------------------------------------------------------------------
+-- Worker functions.
 -- @section workers
 
 
--- Adds a background worker to the end of the active thread list. Removes it
--- simultaneously from the inactive list.
+-- Adds a background worker to the end of the thread lists. Either active or inactive
 -- @param t thread table (see copas.addworker()) to add to the list
 local pushthread = function(t)
-    table.insert(activeworkers, t)
-    inactiveworkers[t.thread] = nil  -- remove to be sure
+    if #t.queue == 0 then
+      inactiveworkers[t.thread] = t
+    else
+      if not activeworkers[t.thread] then
+        -- not in here yet
+        table.insert(activeworkers, t)
+        activeworkers[t.thread] = t
+        inactiveworkers[t.thread] = nil  -- remove to be sure
+      else
+        -- already in there, nothing to do
+      end
+    end
 end
 
 -- Pops background worker from the active thread list
@@ -86,13 +153,17 @@ local popthread = function(t)
 
     if not t then
         -- get the first one
-        return table.remove(activeworkers, 1)
+        local w = table.remove(activeworkers, 1)
+        activeworkers[w.thread] = nil
+        return w
     else
         -- specific one specified, have to go look for it
         for i, v in ipairs(activeworkers) do
             if v == t or v.thread == t then
                 -- found it, return it
-                return table.remove(activeworkers, i)
+                local w = table.remove(activeworkers, i)
+                activeworkers[w.thread] = nil
+                return w
             end
         end
         -- wasn't found
@@ -117,16 +188,9 @@ copas.getworker = function(t)
     else
         -- specific one specified, have to go look for it
         -- check inactive list
-        if inactiveworkers[t] then
-            return inactiveworkers[t]
-        end
+        if inactiveworkers[t] then return inactiveworkers[t] end
         -- look in active list
-        for _, v in ipairs(activeworkers) do
-            if v.thread == t then
-                -- found it, return it
-                return v
-            end
-        end
+        if activeworkers[t] then return activeworkers[t] end
         -- not found yet, is it now running?
         if runningworker and runningworker.thread == t then
             return runningworker
@@ -178,57 +242,8 @@ copas.removeworker = function(t)
     end
 end
 
--- Queue element to hold queued data in a worker queue. Queue elements are created
--- and returned by the the `worker:push()` method.
--- @class table
--- @field cancelled flag; `true` when the element has been cancelled
--- @field completed flag; `true` when the element has been completed or cancelled
--- ('completed' is when the worker requests the next element by calling its `pop()` function
--- @field worker The worker table for which this queue element has been enqueued.
--- @field data the actual data
--- @field cancel method
--- @field complete method
--- @see queueitem.cancel
--- @see queueitem.complete
--- @see worker.push
-local newqueueitem = function(data, worker)
-
 -------------------------------------------------------------------------------
--- QueueItem class.
--- Object created by `worker:push` when data is pushed into the `worker` queue. This 
--- object can be tracked for progress or cancellation.
--- @type queueitem
-  
-  local queueitem = {
-      data = data,
-      worker = worker,  -- worker thread table
-      cancelled = nil,  -- set to true when cancelled
-      completed = nil,  -- set to true when completed
-  }
-  -----------------------------------------------------------------------
-  -- Cancels the `queueitem`.
-  -- When cancelling both the `cancelled` and `completed`
-  -- flag will be set. The `cancelled` flag will prevent the data from being executed
-  -- when it is being popped from the queue.
-  function queueitem:cancel()
-      self.cancelled = true
-      self.completed = true
-  end
-  
-  -----------------------------------------------------------------------
-  -- Marks the `queueitem` as completed.
-  -- The `completed` flag will be set. Generally there is no need to call this method, it will
-  -- be called when the `worker` handling this element pops the next element from its queue.
-  function queueitem:complete()
-      self.completed = true
-  end
-  
-  return queueitem
-end
-
-
--------------------------------------------------------------------------------
--- Creates a `worker` and adds it to the Copas scheduler. The workers will be executed when there is no IO nor
+-- Creates a `worker` and adds it to the Copas scheduler. The workers will be executed when there is no I/O nor
 -- any expiring `timer` to run. The function will be started immediately upon
 -- creating the coroutine for the worker. Calling `worker:push` on
 -- the returned worker table will enqueue data to be handled. The function can
@@ -239,7 +254,6 @@ end
 -- @tparam function errhandler function to handle any errors returned or `nil` (should be a function taking 2 arguments; 1 - coroutine generating the error, 2 - returned error)
 -- @return `worker`
 -- @see copas.removeworker
--- @within Backgroundworkers
 -- @usage local w = copas.addworker(function(queue)
 --         -- do some initializing here... will be run immediately upon
 --         -- adding the worker
@@ -255,19 +269,27 @@ end
 -- -- enqueue data for the new worker
 -- w:push("here is some data")
 copas.addworker = function(func, errhandler)
-    local popdata
     local worker = {
         thread = coroutine.create(func),
         errhandler = errhandler or _missingWerrorhandler,
         queue = {}
-    }    
+    }
 -------------------------------------------------------------------------------
 -- Worker class.
 -- This class represents a `worker` and its queue with `queueitem` objects. It can be used to manipulate the worker and push data to it.
 -- @type worker
--- @field thread Holds the coroutine for this worker
--- @field errhandler Holds the errorhandler for this worker
--- @field queue Holds the list of `queueitem` objects waiting to be processed by the worker
+
+---
+-- Holds the coroutine for this worker
+-- @field thread 
+
+---
+-- Holds the errorhandler for this worker
+-- @field errhandler 
+
+---
+-- Holds the list of `queueitem` objects waiting to be processed by the worker
+-- @field queue
         
     ------------------------------------------------------
     -- Adds data to the `worker` queue. If the `worker` has died, it will return an error
@@ -280,24 +302,26 @@ copas.addworker = function(func, errhandler)
     -- w:push("some data")
     function worker:push(data)
         if coroutine.status(self.thread) == "dead" then return nil, "cannot push data to dead worker" end
-        table.insert(self.queue, newqueueitem(data, self))
-        if t ~= runningworker then
+        local qi = newqueueitem(data, self)
+        table.insert(self.queue, qi)
+        if self ~= runningworker then
             -- move worker to activelist, only if not active, active will be reinserted by dowork()
             pushthread(self)
         end
-        return self.queue[1]
+        return qi
     end
     ------------------------------------------------------
     -- Retrieves data from the `worker` queue (and implicitly yields control). Note that this method
     -- implicitly yields the coroutine until new data has been pushed in the `worker` queue.
     -- @return data field of the next `queueitem` popped from the queue
     function worker:pop()
-        assert(coroutine.running() == self.thread,"pop() may only be called by the workerthread itself")
+        --assert(coroutine.running() == self.thread,"pop() may only be called by the workerthread itself")
+        -- the assert fails because in 5.1 coxpcall creates a new coroutine. 5.2 is ok.
         if self._lastpopped then
             --contains previously popped data element, mark as completed
             self._lastpopped:complete()
+            self._lastpopped = nil
         end
-        self._lastpopped = nil
 
         while not self._lastpopped do
           coroutine.yield()
@@ -311,7 +335,8 @@ copas.addworker = function(func, errhandler)
     -- that this method does not pop a new element from the `worker` queue.
     -- @return `true`
     function worker:pause()
-        assert(coroutine.running() == self.thread,"pause() may only be called by the workerthread itself")
+        --assert(coroutine.running() == self.thread,"pause() may only be called by the workerthread itself")
+        -- the assert fails because in 5.1 coxpcall creates a new coroutine. 5.2 is ok.
         table.insert(self.queue,1,true)  -- insert fake element; true
         coroutine.yield()
         return table.remove(self.queue, 1) -- returns the fake element; true
@@ -320,7 +345,7 @@ copas.addworker = function(func, errhandler)
     function worker:step()
       local oldrunningworker = runningworker
       runningworker = self
-      local success, err = coroutine.resume(self.thread)
+      local success, err = coroutine.resume(self.thread, self)
       runningworker = oldrunningworker
       if not success then
           pcall(self.errhandler, self.thread, err)
@@ -328,12 +353,7 @@ copas.addworker = function(func, errhandler)
       if coroutine.status(self.thread) ~= "dead" then
           -- coroutine is still alive
           if not self._hasbeenremoved then -- double check the worker didn't remove itself
-              if #self.queue > 0 then
-                  pushthread(self)   -- add thread to end of queue again for next run
-              else
-                  -- nothing in queue, so move to inactive list
-                  inactiveworkers[self.thread] = self
-              end
+              pushthread(self)   -- add thread to end of queue again for next run
           else
               self._hasbeenremoved = nil
           end
@@ -354,9 +374,7 @@ copas.addworker = function(func, errhandler)
     end
     
     -- initialize coroutine by resuming, and store in list (queue empty, so inactive)
-    local success, err = coroutine.resume(worker.thread, worker)
-    if not success then pcall(worker.errhandler, worker.thread, err) end
-    inactiveworkers[worker.thread] = worker
+    worker:step()
     return worker
 end
 
@@ -641,7 +659,7 @@ copas.loop = function (timeout, precision)
         end
         -- run copas step and timercheck
         nextstep = copas.step(nextstep, precision) or timeout
-
+        
         -- check on exit strategy
         if exiting and not exitingnow then
             if (next(exiteventthreads.queueitems)) then

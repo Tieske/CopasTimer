@@ -8,7 +8,10 @@
 -- have been scheduled to each handle one or more enqueued events, but they will not be executed when an event 
 -- is dispatched. Execution follows later when
 -- the Copas Timer loop continues to handle its worker queues in the background.
--- The eventer will create a global table; `copas.eventer`, but that should generally not be used except for
+-- The events have 2 synchronization methods; `finish` and `waitfor`.
+--
+-- The eventer will create a table within the Copas module; `copas.eventer`, but that 
+-- should generally not be used except for
 -- the `copas.eventer.decorate` method which will provide an object/table with event capabilities.
 --
 -- @author Thijs Schreijer, http://www.thijsschreijer.nl
@@ -315,7 +318,8 @@ end
 
 -------------------------------------------------------------------------------
 -- Eventer core functions.
--- Class returned for a dispatched event, with synchonization capabilities
+-- Generally these functions are not used, except for `decorate` which implements regular
+-- object oriented access to all others.
 -- @section core
 
 
@@ -630,7 +634,7 @@ copas.eventer.decorate(copas.eventer, copas.eventer.events) -- replaces eventer.
 -- @table copas.events
 -- @field loopstarting Fired <strong>before</strong> the copas loop starts. It will immediately be finished (see `event:finish`). So while the event threads run there will be no timers, sockets, nor workers running. Only the threads created for the 'loopstarting' event will run.
 -- @field loopstarted Fired when the Copas loop has started, by now timers, sockets and workers are running.
--- @field loopstopping Fired when the Copas loop starts exiting. For as long as not all event threads (for this specific event) have finished, the timers, sockets and workers will keep running.
+-- @field loopstopping Fired when the Copas loop starts exiting (see `exitloop`). For as long as not all event threads (for this specific event) have finished, the timers, sockets and workers will keep running.
 -- @field loopstopped Fired <strong>after</strong> the Copas loop has finished, this event will immediately be finished (see `event:finish`), so the timers, sockets and workers no longer run.
 -- @see event:finish
 copas.events = { "loopstarting", "loopstarted", "loopstopping", "loopstopped" }

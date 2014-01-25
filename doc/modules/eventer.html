@@ -40,13 +40,13 @@
 
 
 <h2>Modules</h2>
-<ul class="nowrap">
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
   <li><strong>eventer</strong></li>
   <li><a href="../modules/timer.html">timer</a></li>
 </ul>
 <h2>Topics</h2>
-<ul class="nowrap">
-  <li><a href="../topics/readme.md.html">readme.md</a></li>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../topics/readme.md.html">readme</a></li>
 </ul>
 
 </div>
@@ -54,7 +54,6 @@
 <div id="content">
 
 <h1>Module <code>eventer</code></h1>
-
 <p>The eventer is an event dispatcher.</p>
 <p> It works on top of Copas Timer using the
  <code>worker</code> to create event handlers. The eventer uses a publish/subscribe mechanism with servers and clients.
@@ -69,10 +68,10 @@
  the <code>copas.eventer.decorate</code> method which will provide an object/table with event capabilities.</p>
     <h3>Info:</h3>
     <ul>
+        <li><strong>Copyright</strong>: 2011-2013 Thijs Schreijer</li>
         <li><strong>Release</strong>: Version 1.0, Timer module to extend Copas with a timer, worker and event capabilities</li>
         <li><strong>License</strong>: Copas Timer is free software under the MIT/X11 license.</li>
         <li><strong>Author</strong>: Thijs Schreijer, http://www.thijsschreijer.nl</li>
-        <li><strong>Copyright</strong>: 2011-2013 Thijs Schreijer</li>
     </ul>
 
 
@@ -184,6 +183,7 @@
 
 
 
+
     <h3>See also:</h3>
     <ul>
          <a href="../modules/eventer.html#decorate">decorate</a>
@@ -210,6 +210,7 @@
     Dispatches an event for this server.  It functions as a shortcut to
  <a href="../modules/eventer.html#serverdispatch">serverdispatch</a> .
 
+
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">event</span>
@@ -224,7 +225,7 @@
     <h3>Returns:</h3>
     <ol>
 
-        <a href="../modules/eventer.html#Class_event">event</a>
+        <a href="../modules/eventer.html#event">event</a>
     </ol>
 
 
@@ -258,6 +259,7 @@
     Subscribes a client to the events of this server.  It functions as a shortcut
  to <a href="../modules/eventer.html#clientsubscribe">clientsubscribe</a> . See the example below for the format of the
  event data delivered to the event handler.
+
 
     <h3>Parameters:</h3>
     <ul>
@@ -320,6 +322,7 @@
     Unsubscribes a client from the events of this server.  It functions as a shortcut
  to <a href="../modules/eventer.html#clientunsubscribe">clientunsubscribe</a> .
 
+
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">client</span>
@@ -357,6 +360,7 @@
 
 
 
+
 </dd>
     <dt>
     <a name = "event:cancel"></a>
@@ -366,6 +370,7 @@
     Cancels all event related queueitems from the Copas background worker queues.
  Queueitems will remain in the event object itself, but will be flagged
  as cancelled.
+
 
 
 
@@ -383,6 +388,7 @@
  NOT yield while waiting, it will only process the event related queueitems. It is blocking, so timers, sockets
  and workers will not run in the mean time, so executing this method may take a long time so use carefully!<br/>
  If it should not block, then use <a href="../modules/eventer.html#event:waitfor">event:waitfor</a> .
+
 
     <h3>Parameters:</h3>
     <ul>
@@ -414,6 +420,7 @@
  this does not include additional events spawned from them. Current thread/worker will
  yield while waiting (so cannot be used from the mainthread!).
 
+
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">timeout</span>
@@ -438,7 +445,8 @@
 </dl>
     <h2><a name="Eventer_core_functions"></a>Eventer core functions </h2>
 
- Class returned for a dispatched event, with synchonization capabilities
+ Generally these functions are not used, except for <a href="../modules/eventer.html#decorate">decorate</a>  which implements regular
+ object oriented access to all others.
     <dl class="function">
     <dt>
     <a name = "clientsubscribe"></a>
@@ -447,6 +455,7 @@
     <dd>
     Subscribes a client to events.
  The prefered way is to use the <a href="../modules/eventer.html#decorate">decorate</a>  function and then call <a href="../modules/eventer.html#event_server:subscribe">event_server:subscribe</a> .
+
 
     <h3>Parameters:</h3>
     <ul>
@@ -482,6 +491,7 @@
     <dd>
     Unsubscribes a client from events.
  The prefered way is to use the <a href="../modules/eventer.html#decorate">decorate</a>  function and then call <a href="../modules/eventer.html#event_server:unsubscribe">event_server:unsubscribe</a> .
+
 
     <h3>Parameters:</h3>
     <ul>
@@ -519,7 +529,8 @@
  <li><a href="../modules/eventer.html#event_server:dispatch">event_server:dispatch</a> </li>
  <li><a href="../modules/eventer.html#event_server.events">event_server.events</a> </li>
  </ul>Additionally it will register the object as event server. The methods are
- shortcuts to the <a href="../modules/eventer.html#">eventer</a>  methods <code>clientsubscribe, clientunsubscribe, serverdispatch</code>. See <a href="../modules/eventer.html#Class_event_server">event_server</a>  for some examples.
+ shortcuts to the <a href="../modules/eventer.html#">eventer</a>  methods <code>clientsubscribe, clientunsubscribe, serverdispatch</code>. See <a href="../modules/eventer.html#event_server">event_server</a>  for some examples.
+
 
     <h3>Parameters:</h3>
     <ul>
@@ -535,7 +546,7 @@
 
     <h3>See also:</h3>
     <ul>
-         <a href="../modules/eventer.html#Class_event_server">event_server</a>
+         <a href="../modules/eventer.html#event_server">event_server</a>
     </ul>
 
 
@@ -546,6 +557,7 @@
     </dt>
     <dd>
     Gets a list of clients of a particular server.
+
 
     <h3>Parameters:</h3>
     <ul>
@@ -577,6 +589,7 @@
     <dd>
     Gets a list of subscriptions of a particular client.
 
+
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">client</span>
@@ -602,6 +615,7 @@
     Dispatches an event from a server.
  The prefered way is to use the <a href="../modules/eventer.html#decorate">decorate</a>  function and then call <a href="../modules/eventer.html#event_server:dispatch">event_server:dispatch</a>
 
+
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">server</span>
@@ -619,7 +633,7 @@
     <h3>Returns:</h3>
     <ol>
 
-        <a href="../modules/eventer.html#Class_event">event</a>
+        <a href="../modules/eventer.html#event">event</a>
     </ol>
 
 
@@ -638,6 +652,7 @@
     <dd>
     Registers a server that will fire events.
  The prefered way is to use the <a href="../modules/eventer.html#decorate">decorate</a>  function.
+
 
     <h3>Parameters:</h3>
     <ul>
@@ -665,6 +680,7 @@
     <dd>
     Unregisters a server that will no longer fire events
 
+
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">server</span>
@@ -684,6 +700,7 @@
     <dd>
     Sets the error handler function to be used when calling eventhandlers.
  to an <a href="http://www.lua.org/manual/5.1/manual.html#pdf-xpcall">xpcall</a>  call)
+
 
     <h3>Parameters:</h3>
     <ul>
@@ -708,6 +725,7 @@
     </dt>
     <dd>
     Event generated by the eventer.
+
 
     <h3>Fields:</h3>
     <ul>
@@ -738,6 +756,7 @@
     Events generated by Copas.  The event structure for Copas will only be
  initialized when the eventer is used.
 
+
     <h3>Fields:</h3>
     <ul>
         <li><span class="parameter">loopstarting</span>
@@ -747,7 +766,7 @@
          Fired when the Copas loop has started, by now timers, sockets and workers are running.
         </li>
         <li><span class="parameter">loopstopping</span>
-         Fired when the Copas loop starts exiting. For as long as not all event threads (for this specific event) have finished, the timers, sockets and workers will keep running.
+         Fired when the Copas loop starts exiting (see <code>exitloop</code>). For as long as not all event threads (for this specific event) have finished, the timers, sockets and workers will keep running.
         </li>
         <li><span class="parameter">loopstopped</span>
          Fired <strong>after</strong> the Copas loop has finished, this event will immediately be finished (see <a href="../modules/eventer.html#event:finish">event:finish</a> ), so the timers, sockets and workers no longer run.
@@ -769,7 +788,7 @@
 </div> <!-- id="content" -->
 </div> <!-- id="main" -->
 <div id="about">
-<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.0</a></i>
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.2</a></i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
