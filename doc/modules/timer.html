@@ -68,11 +68,11 @@
  table and not a separate timer table.</p>
 
 <p> There is a difference between the 2 background mechanisms provided; the
- <a href="../modules/timer.html#">timer</a>  runs on the main loop, and hence should never yield. The <a href="../modules/timer.html#worker">worker</a>  runs in
- their own thread (coroutine) and can be yielded (<a href="../modules/timer.html#worker:pause">worker:pause</a> ) if they take too long.</p>
+ <a href="../modules/timer.html#">timer</a>  runs on the main loop, and hence should never yield. A <a href="../modules/timer.html#worker">worker</a>  runs in
+ its own thread (coroutine) and can be yielded (<a href="../modules/timer.html#worker:pause">worker:pause</a> ) if they take too long.</p>
 
 <p> The workers are dispatched from a rotating queue, so when a worker is up to run
- it will be removed from the queue, resumed, and (if not finished) added at the end
+ it will be removed from the queue, resumed, and (if its queue isn't empty) added at the end
  of the queue again.</p>
     <h3>Info:</h3>
     <ul>

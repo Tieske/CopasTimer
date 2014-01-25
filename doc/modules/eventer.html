@@ -64,7 +64,10 @@
  have been scheduled to each handle one or more enqueued events, but they will not be executed when an event
  is dispatched. Execution follows later when
  the Copas Timer loop continues to handle its worker queues in the background.
- The eventer will create a global table; <code>copas.eventer</code>, but that should generally not be used except for
+ The events have 2 synchronization methods; <a href="../modules/eventer.html#event:finish">finish</a>  and <a href="../modules/eventer.html#event:waitfor">waitfor</a> .</p>
+
+<p> The eventer will create a table within the Copas module; <code>copas.eventer</code>, but that
+ should generally not be used except for
  the <code>copas.eventer.decorate</code> method which will provide an object/table with event capabilities.</p>
     <h3>Info:</h3>
     <ul>
