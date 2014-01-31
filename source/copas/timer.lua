@@ -19,7 +19,7 @@
 --
 -- @author Thijs Schreijer, http://www.thijsschreijer.nl
 -- @license Copas Timer is free software under the MIT/X11 license.
--- @copyright 2011-2013 Thijs Schreijer
+-- @copyright 2011-2014 Thijs Schreijer
 -- @release Version 1.0, Timer module to extend Copas with a timer, worker and event capabilities
 
 local copas = require("copas")
@@ -250,15 +250,33 @@ end
 -- fetch data from the queue through `worker:pop` which will
 -- pop a new element from the workers queue. For lengthy operations where the code needs
 -- to yield without popping a new element from the queue, call `worker:pause`.
--- @tparam function func function to execute as the coroutine
--- @tparam function errhandler function to handle any errors returned or `nil` (should be a function taking 2 arguments; 1 - coroutine generating the error, 2 - returned error)
+-- @param[opt] obj object the worker relates to
+-- @tparam function func function to execute as the coroutine. It takes as arguments `obj` and `worker`, where `obj` is only provided when it is passed to `addworker`. It allows to use `obj` as `self` in the worker function. See both examples below.
+-- @tparam[opt] function errhandler function to handle any errors returned or `nil` (should be a function taking 2 arguments; 1 - coroutine generating the error, 2 - returned error)
 -- @return `worker`
 -- @see copas.removeworker
--- @usage local w = copas.addworker(function(queue)
+-- @usage 
+-- local obj = {}
+-- function obj:display(data) print(data) end
+-- function obj:handler(worker) -- object ':' notation
+--    -- do some initializing here... will be run immediately upon
+--    -- adding the worker
+--    while true do
+--        data = worker:pop()   -- fetch data from queue, implicitly yields the coroutine
+--        self:display(data)    -- call on 'self'
+--    end
+-- end
+-- obj.worker = copas.addworker(obj, obj.handler)
+-- -- enqueue data for the new worker
+-- obj.worker:push("here is some data")
+--
+-- -- alternative without an object, demonstrating 'pause' for long operations
+-- local w = copas.addworker(function(queue)
+--         -- 'queue' is the worker object (named 'queue' for readability)
 --         -- do some initializing here... will be run immediately upon
 --         -- adding the worker
 --         while true do
---             data = queue:pop()    -- fetch data from queue, implictly yields the coroutine
+--             data = queue:pop()    -- fetch data from queue, implicitly yields the coroutine
 --             -- handle the retrieved data here
 --             print(data)
 --             -- do some lengthy stuff
@@ -268,9 +286,14 @@ end
 --     end)
 -- -- enqueue data for the new worker
 -- w:push("here is some data")
-copas.addworker = function(func, errhandler)
+copas.addworker = function(obj, func, errhandler)
+    if type(obj) == "function" then
+      -- no object provided, so shift params
+      obj, func, errhandler = nil, obj, func
+    end
     local worker = {
         thread = coroutine.create(func),
+        self = obj,
         errhandler = errhandler or _missingWerrorhandler,
         queue = {}
     }
@@ -345,7 +368,13 @@ copas.addworker = function(func, errhandler)
     function worker:step()
       local oldrunningworker = runningworker
       runningworker = self
-      local success, err = coroutine.resume(self.thread, self)
+      local success, err
+      if self.self then
+        success, err = coroutine.resume(self.thread, self.self, self)
+        self.self = nil -- we passed it in the fisrt run only, so delete it
+      else
+        success, err = coroutine.resume(self.thread, self)
+      end      
       runningworker = oldrunningworker
       if not success then
           pcall(self.errhandler, self.thread, err)

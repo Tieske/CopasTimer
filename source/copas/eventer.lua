@@ -16,7 +16,7 @@
 --
 -- @author Thijs Schreijer, http://www.thijsschreijer.nl
 -- @license Copas Timer is free software under the MIT/X11 license.
--- @copyright 2011-2013 Thijs Schreijer
+-- @copyright 2011-2014 Thijs Schreijer
 -- @release Version 1.0, Timer module to extend Copas with a timer, worker and event capabilities
 
 
@@ -40,6 +40,19 @@ local _missingerrorhandler = function(err)
     return debug.traceback("copas.eventer encountered an error while executing an eventhandler: " .. tostring(err))
 end
 
+local notobjects = {
+  ["function"] = 1,
+  ["nil"] = 1,
+  ["number"] = 1,
+  ["string"] = 1,
+  ["boolean"] = 1,
+  --["table"] = 1, 
+  ["function"] = 1, 
+  ["thread"] = 1,
+  --["userdata"] = 1, 
+}
+local nulerrhandler = function() end
+
 -- local function to do the actual dispatching by creating new threads
 -- @param handler function to use as coroutine
 -- @param client unique id of the client (use 'self' for objects)
@@ -49,7 +62,9 @@ end
 -- @return item queued in the worker queue
 local disp = function(handler, client, server, event, ...)
     if not workers[handler] then
-        -- worker not found, so create one
+      -- worker not found, so create one
+      if notobjects[type(client)] then
+        -- client is not an object type, so install handler without object/self notation
         workers[handler] = copas.addworker(function(queue)
                 -- wrap the handler in a function that cleans up when it returns
                 local ok, err = xpcall(function() handler(queue) end, errorhandler or _missingerrorhandler)
@@ -59,7 +74,20 @@ local disp = function(handler, client, server, event, ...)
                 if not ok then
                   error(err)  -- must throw error, so copas.timer cleans up properly
                 end
-            end)
+            end, nullerrhandler) -- use null handler to disable copas.timer errorhandler
+      else
+        -- client is an object type, so install handler with object/self notation
+        workers[handler] = copas.addworker(client, function(obj, queue)
+                -- wrap the handler in a function that cleans up when it returns
+                local ok, err = xpcall(function() handler(obj, queue) end, errorhandler or _missingerrorhandler)
+                -- the handler should never return, but if it does (error?), clean it up
+                copas.removeworker(workers[handler])
+                workers[handler] = nil
+                if not ok then
+                  error(err)  -- must throw error, so copas.timer cleans up properly
+                end
+            end, nullerrhandler) -- use null handler to disable copas.timer errorhandler
+      end
     end
 
     return workers[handler]:push({client = client, server = server, name = event, n = select("#", ...), ...  })
@@ -126,7 +154,7 @@ end
 -- to `clientsubscribe`. See the example below for the format of the
 -- event data delivered to the event handler.
 -- @param client the client identifier (usually the client object table)
--- @tparam function handler the handler function for the event
+-- @tparam function handler the handler function for the event. For the function signature see `clientsubscribe`.
 -- @tparam string event the event (from the list `event_server.events`) to subscribe to or `nil` to subscribe to all events
 -- @see decorate
 -- @usage -- create an object and decorate it with event capabilities
@@ -135,10 +163,9 @@ end
 -- 
 -- -- create another object and subscribe to events of obj1
 -- local obj2 = {
---     eventhandler = function(eventqueue)
+--     eventhandler = function(self, eventqueue)
 --         while true do
 --             local event = eventqueue:pop()
---             local self = event.client   -- collect 'self' from event data
 --             -- handle the retrieved data here
 --             print(event.client)         -->  "table: 03AF0910" == obj2
 --             print(event.server)         -->  "table: 06A30AD3" == obj1
@@ -377,7 +404,7 @@ copas.eventer = {
     -- The prefered way is to use the `decorate` function and then call `event_server:subscribe`.
     -- @param client unique client parameter (usually self)
     -- @param server a unique key to identify the specific server (usually the server object/table)
-    -- @param handler event handler function to be called, it will be wrapped as a background worker-coroutine. See `event_server:subscribe` for an example of how the parameters are passed to the handler.
+    -- @param handler event handler function to be called, it will be wrapped as a background worker-coroutine. If `client` is either a table or a userdata (object types), then the handler will be called with 2 arguments; `client` and `worker`, otherwise it will only get `worker`. See `event_server:subscribe` for an example of how the parameters are passed to the handler.
     -- @tparam string event event name, or `nil` to subscribe to all events
     -- @see decorate
     -- @see event_server:subscribe

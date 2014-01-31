@@ -36,10 +36,9 @@ local object1 = {
         self:dispatch(self.events.started)
     end,
 
-    copaseventhandler = function(eventqueue)
+    copaseventhandler = function(self, eventqueue)
       while true do
         local event = eventqueue:pop()
-        local self = event.client
         if event.name == copas.events.loopstarting then
           print("COPAS is starting, lets initialize, set counter properly")
           self.i = 0
@@ -70,10 +69,9 @@ object1:init()
 
 -- create second object to consume events
 local object2 = {
-    eventhandler = function(eventqueue)
+    eventhandler = function(self, eventqueue)
 	    while true do
         local event = eventqueue:pop()
-        local self = event.client
         print ("received event; " .. event.name .. " with data; " .. tostring(event[1]) )
       end
     end,

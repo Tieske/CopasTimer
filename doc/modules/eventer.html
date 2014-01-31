@@ -271,7 +271,7 @@
         </li>
         <li><span class="parameter">handler</span>
             <span class="types"><span class="type">function</span></span>
-         the handler function for the event
+         the handler function for the event. For the function signature see <a href="../modules/eventer.html#clientsubscribe">clientsubscribe</a> .
         </li>
         <li><span class="parameter">event</span>
             <span class="types"><a class="type" href="http://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
@@ -294,11 +294,10 @@
 
  <span class="comment">-- create another object and subscribe to events of obj1
 </span> <span class="keyword">local</span> obj2 = {
-     eventhandler = <span class="keyword">function</span>(eventqueue)
+     eventhandler = <span class="keyword">function</span>(self, eventqueue)
          <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
              <span class="keyword">local</span> event = eventqueue:pop()
-             <span class="keyword">local</span> self = event.client   <span class="comment">-- collect 'self' from event data
-</span>             <span class="comment">-- handle the retrieved data here
+             <span class="comment">-- handle the retrieved data here
 </span>             <span class="global">print</span>(event.client)         <span class="comment">--&gt;  "table: 03AF0910" == obj2
 </span>             <span class="global">print</span>(event.server)         <span class="comment">--&gt;  "table: 06A30AD3" == obj1
 </span>             <span class="global">print</span>(event.name)           <span class="comment">--&gt;  "stop"
@@ -469,7 +468,7 @@
          a unique key to identify the specific server (usually the server object/table)
         </li>
         <li><span class="parameter">handler</span>
-         event handler function to be called, it will be wrapped as a background worker-coroutine. See <a href="../modules/eventer.html#event_server:subscribe">event_server:subscribe</a>  for an example of how the parameters are passed to the handler.
+         event handler function to be called, it will be wrapped as a background worker-coroutine. If <code>client</code> is either a table or a userdata (object types), then the handler will be called with 2 arguments; <code>client</code> and <code>worker</code>, otherwise it will only get <code>worker</code>. See <a href="../modules/eventer.html#event_server:subscribe">event_server:subscribe</a>  for an example of how the parameters are passed to the handler.
         </li>
         <li><span class="parameter">event</span>
             <span class="types"><a class="type" href="http://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>

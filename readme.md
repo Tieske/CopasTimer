@@ -1,6 +1,6 @@
 #Copas Timer
 Copas Timer is free software under the MIT/X11 license.  
-Copyright 2011-2013 Thijs Schreijer
+Copyright 2011-2014 Thijs Schreijer
 
 [Documentation](http://tieske.github.com/CopasTimer/) and [sourcecode](http://github.com/Tieske/CopasTimer) are on GitHub
 
@@ -71,20 +71,18 @@ local copas = require("copas.timer")
 require("copas.eventer")   -- will be installed inside the global copas table; copas.eventer
 
 local my_app = {
-  before_start = function(eventqueue)
+  before_start = function(self, eventqueue)
     while true do
       local event = eventqueue:pop()
-      local self = event.client
       
       -- initialize stuff and create some sockets here...
       
     end
   end,
 
-  after_start = function(eventqueue)
+  after_start = function(self, eventqueue)
     while true do
       local event = eventqueue:pop()
-      local self = event.client
 
       -- do some stuff
       
@@ -118,21 +116,24 @@ return my_module
 
 
 ##Changelog
-###xx-xxx-2013; release 1.0
-- background workers have been completely revised to work as coroutines instead of callbacks. This also reflects in the `eventer` module, where 
-event handlers must now be setup as coroutines and get their event data from a queue.
+###xx-xxx-2014; release 1.0
+
+- background workers have been completely revised to work as coroutines instead of callbacks. This also reflects in the `eventer` module, where event handlers must now be setup as coroutines and get their event data from a queue.
 
 ###07-Mar-2013; release 0.4.3
+
 - `eventer.decorate()` function now protects access to `events` table so invalid events throw an error
 - fixed bug in timer errorhandler function
 
 ###04-Jun-2012; release 0.4.2
+
 - fixed undefined behaviour when arming an already armed timer
 - removed default 1 second interval, now throws an error if the first call to `arm()` does not provide an interval.
 - bugfix, worker could not remove itself from the worker queue
 - added method `copas.waitforcondition()` to the timer module
 
 ###07-Nov-2011; release 0.4.1
+
 - bugfix, timer could not be cancelled from its own handler.
 - bugfix, worker completed elswhere is no longer resumed.
 - changed `exitloop()` and `isexiting()` members, see docs for use (this is breaking!)

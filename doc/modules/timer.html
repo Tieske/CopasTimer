@@ -113,7 +113,7 @@
 <h2><a href="#Worker_functions">Worker functions </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#copas.addworker">copas.addworker (func, errhandler)</a></td>
+	<td class="name" nowrap><a href="#copas.addworker">copas.addworker ([obj], func[, errhandler])</a></td>
 	<td class="summary">Creates a <a href="../modules/timer.html#worker">worker</a>  and adds it to the Copas scheduler.</td>
 	</tr>
 	<tr>
@@ -333,7 +333,7 @@
     <dl class="function">
     <dt>
     <a name = "copas.addworker"></a>
-    <strong>copas.addworker (func, errhandler)</strong>
+    <strong>copas.addworker ([obj], func[, errhandler])</strong>
     </dt>
     <dd>
     Creates a <a href="../modules/timer.html#worker">worker</a>  and adds it to the Copas scheduler.  The workers will be executed when there is no I/O nor
@@ -347,9 +347,12 @@
 
     <h3>Parameters:</h3>
     <ul>
+        <li><span class="parameter">obj</span>
+         object the worker relates to
+        </li>
         <li><span class="parameter">func</span>
             <span class="types"><span class="type">function</span></span>
-         function to execute as the coroutine
+         function to execute as the coroutine. It takes as arguments <code>obj</code> and <a href="../modules/timer.html#worker">worker</a> , where <code>obj</code> is only provided when it is passed to <a href="../modules/timer.html#copas.addworker">addworker</a> . It allows to use <code>obj</code> as <code>self</code> in the worker function. See both examples below.
         </li>
         <li><span class="parameter">errhandler</span>
             <span class="types"><span class="type">function</span></span>
@@ -371,11 +374,28 @@
 
     <h3>Usage:</h3>
     <ul>
-        <pre class="example"> <span class="keyword">local</span> w = copas.addworker(<span class="keyword">function</span>(queue)
-         <span class="comment">-- do some initializing here... will be run immediately upon
+        <pre class="example">
+ <span class="keyword">local</span> obj = {}
+ <span class="keyword">function</span> obj:display(data) <span class="global">print</span>(data) <span class="keyword">end</span>
+ <span class="keyword">function</span> obj:handler(worker) <span class="comment">-- object ':' notation
+</span>    <span class="comment">-- do some initializing here... will be run immediately upon
+</span>    <span class="comment">-- adding the worker
+</span>    <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+        data = worker:pop()   <span class="comment">-- fetch data from queue, implicitly yields the coroutine
+</span>        self:display(data)    <span class="comment">-- call on 'self'
+</span>    <span class="keyword">end</span>
+ <span class="keyword">end</span>
+ obj.worker = copas.addworker(obj, obj.handler)
+ <span class="comment">-- enqueue data for the new worker
+</span> obj.worker:push(<span class="string">"here is some data"</span>)
+
+ <span class="comment">-- alternative without an object, demonstrating 'pause' for long operations
+</span> <span class="keyword">local</span> w = copas.addworker(<span class="keyword">function</span>(queue)
+         <span class="comment">-- 'queue' is the worker object (named 'queue' for readability)
+</span>         <span class="comment">-- do some initializing here... will be run immediately upon
 </span>         <span class="comment">-- adding the worker
 </span>         <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
-             data = queue:pop()    <span class="comment">-- fetch data from queue, implictly yields the coroutine
+             data = queue:pop()    <span class="comment">-- fetch data from queue, implicitly yields the coroutine
 </span>             <span class="comment">-- handle the retrieved data here
 </span>             <span class="global">print</span>(data)
              <span class="comment">-- do some lengthy stuff
