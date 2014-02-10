@@ -1,0 +1,797 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>CopasTimer</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>CopasTimer</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Class_event_server">Class event_server </a></li>
+<li><a href="#Class_event">Class event </a></li>
+<li><a href="#Eventer_core_functions">Eventer core functions </a></li>
+<li><a href="#Eventer_and_Copas_events">Eventer and Copas events </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><strong>eventer</strong></li>
+  <li><a href="../modules/timer.html">timer</a></li>
+</ul>
+<h2>Topics</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../topics/readme.md.html">readme</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>eventer</code></h1>
+<p>The eventer is an event dispatcher.</p>
+<p> It works on top of Copas Timer using the
+ <code>worker</code> to create event handlers. The eventer uses a publish/subscribe mechanism with servers and clients.
+ The servers should register before firing any events, and the clients should
+ subscribe to server events.</p>
+
+<p> Dispatching pushes event data in the <code>worker</code> queues of the eventhandlers. This means that one or more workers
+ have been scheduled to each handle one or more enqueued events, but they will not be executed when an event
+ is dispatched. Execution follows later when
+ the Copas Timer loop continues to handle its worker queues in the background.
+ The events have 2 synchronization methods; <a href="../modules/eventer.html#event:finish">finish</a>  and <a href="../modules/eventer.html#event:waitfor">waitfor</a> .</p>
+
+<p> The eventer will create a table within the Copas module; <code>copas.eventer</code>, but that
+ should generally not be used except for
+ the <code>copas.eventer.decorate</code> method which will provide an object/table with event capabilities.</p>
+    <h3>Info:</h3>
+    <ul>
+        <li><strong>Copyright</strong>: 2011-2013 Thijs Schreijer</li>
+        <li><strong>Release</strong>: Version 1.0, Timer module to extend Copas with a timer, worker and event capabilities</li>
+        <li><strong>License</strong>: Copas Timer is free software under the MIT/X11 license.</li>
+        <li><strong>Author</strong>: Thijs Schreijer, http://www.thijsschreijer.nl</li>
+    </ul>
+
+
+<h2><a href="#Class_event_server">Class event_server </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#event_server.events">event_server.events</a></td>
+	<td class="summary">Table (as a set) with the event strings for this server.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#event_server:dispatch">event_server:dispatch (event, ...)</a></td>
+	<td class="summary">Dispatches an event for this server.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#event_server:subscribe">event_server:subscribe (client, handler, event)</a></td>
+	<td class="summary">Subscribes a client to the events of this server.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#event_server:unsubscribe">event_server:unsubscribe (client, event)</a></td>
+	<td class="summary">Unsubscribes a client from the events of this server.</td>
+	</tr>
+</table>
+<h2><a href="#Class_event">Class event </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#event.queueitems">event.queueitems</a></td>
+	<td class="summary">Table/list with queueitems created.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#event:cancel">event:cancel ()</a></td>
+	<td class="summary">Cancels all event related queueitems from the Copas background worker queues.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#event:finish">event:finish (timeout)</a></td>
+	<td class="summary">Waits for an event to be completed in a blocking mode.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#event:waitfor">event:waitfor (timeout)</a></td>
+	<td class="summary">Waits for an event to be completed in a non-blocking mode.</td>
+	</tr>
+</table>
+<h2><a href="#Eventer_core_functions">Eventer core functions </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#clientsubscribe">clientsubscribe (client, server, handler, event)</a></td>
+	<td class="summary">Subscribes a client to events.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#clientunsubscribe">clientunsubscribe (client, server, event)</a></td>
+	<td class="summary">Unsubscribes a client from events.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#decorate">decorate (server, events)</a></td>
+	<td class="summary">Decorates an object as an event server.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#getclients">getclients (server)</a></td>
+	<td class="summary">Gets a list of clients of a particular server.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#getsubscriptions">getsubscriptions (client)</a></td>
+	<td class="summary">Gets a list of subscriptions of a particular client.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#serverdispatch">serverdispatch (server, event, ...)</a></td>
+	<td class="summary">Dispatches an event from a server.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#serverregister">serverregister (server, eventlist)</a></td>
+	<td class="summary">Registers a server that will fire events.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#serverunregister">serverunregister (server)</a></td>
+	<td class="summary">Unregisters a server that will no longer fire events</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#seterrorhandler">seterrorhandler (handler)</a></td>
+	<td class="summary">Sets the error handler function to be used when calling eventhandlers.</td>
+	</tr>
+</table>
+<h2><a href="#Eventer_and_Copas_events">Eventer and Copas events </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#copas.eventer.events">copas.eventer.events</a></td>
+	<td class="summary">Event generated by the eventer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#copas.events">copas.events</a></td>
+	<td class="summary">Events generated by Copas.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2><a name="Class_event_server"></a>Class event_server </h2>
+
+ This class describes the elements applied to an event server by the <a href="../modules/eventer.html#decorate">decorate</a>  function
+    <dl class="function">
+    <dt>
+    <a name = "event_server.events"></a>
+    <strong>event_server.events</strong>
+    </dt>
+    <dd>
+    Table (as a set) with the event strings for this server.  The set generated is
+ protected, so accessing a non-existing element will throw an error.
+
+
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/eventer.html#decorate">decorate</a>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="comment">-- create an object and decorate it with event capabilities
+</span> <span class="keyword">local</span> obj1 = {}
+ copas.eventer.decorate(obj1, { <span class="string">"start"</span>, <span class="string">"error"</span>, <span class="string">"stop"</span> } )
+
+ <span class="global">print</span>(obj1.events.start)     <span class="comment">--&gt; "start"
+</span> <span class="global">print</span>(obj1.events.error)     <span class="comment">--&gt; "error"
+</span> <span class="global">print</span>(obj1.events.stop)      <span class="comment">--&gt; "stop"
+</span> <span class="global">print</span>(obj1.events.not_found) --&gt; throws an error</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "event_server:dispatch"></a>
+    <strong>event_server:dispatch (event, ...)</strong>
+    </dt>
+    <dd>
+    Dispatches an event for this server.  It functions as a shortcut to
+ <a href="../modules/eventer.html#serverdispatch">serverdispatch</a> .
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">event</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         one of the elements of <a href="../modules/eventer.html#event_server.events">event_server.events</a>  indicating the event to dispatch
+        </li>
+        <li><span class="parameter">...</span>
+         any additional event parameters
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <a href="../modules/eventer.html#event">event</a>
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="../modules/eventer.html#event_server.events">event_server.events</a></li>
+         <li><a href="../modules/eventer.html#decorate">decorate</a></li>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="comment">-- create an object and decorate it with event capabilities
+</span> <span class="keyword">local</span> obj1 = {}
+ copas.eventer.decorate(obj1, { <span class="string">"start"</span>, <span class="string">"error"</span>, <span class="string">"stop"</span> } )
+
+ ..... <span class="keyword">do</span> some stuff, subscribe to events, start the copas loop, etc.
+
+ <span class="comment">-- raise the start event and include th starttime as an extra
+</span> <span class="comment">-- parameter to be passed to the eventhandlers
+</span> <span class="keyword">local</span> e = obj1:dispatch(obj1.events.start, socket.gettime())
+ <span class="comment">-- now wait for the event to be completely handled
+</span> e:waitfor()</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "event_server:subscribe"></a>
+    <strong>event_server:subscribe (client, handler, event)</strong>
+    </dt>
+    <dd>
+    Subscribes a client to the events of this server.  It functions as a shortcut
+ to <a href="../modules/eventer.html#clientsubscribe">clientsubscribe</a> . See the example below for the format of the
+ event data delivered to the event handler.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">client</span>
+         the client identifier (usually the client object table)
+        </li>
+        <li><span class="parameter">handler</span>
+            <span class="types"><span class="type">function</span></span>
+         the handler function for the event. For the function signature see <a href="../modules/eventer.html#clientsubscribe">clientsubscribe</a> .
+        </li>
+        <li><span class="parameter">event</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         the event (from the list <a href="../modules/eventer.html#event_server.events">event_server.events</a> ) to subscribe to or <code>nil</code> to subscribe to all events
+        </li>
+    </ul>
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/eventer.html#decorate">decorate</a>
+    </ul>
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="comment">-- create an object and decorate it with event capabilities
+</span> <span class="keyword">local</span> obj1 = {}
+ copas.eventer.decorate(obj1, { <span class="string">"start"</span>, <span class="string">"error"</span>, <span class="string">"stop"</span> } )
+
+ <span class="comment">-- create another object and subscribe to events of obj1
+</span> <span class="keyword">local</span> obj2 = {
+     eventhandler = <span class="keyword">function</span>(self, eventqueue)
+         <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+             <span class="keyword">local</span> event = eventqueue:pop()
+             <span class="comment">-- handle the retrieved data here
+</span>             <span class="global">print</span>(event.client)         <span class="comment">--&gt;  "table: 03AF0910" == obj2
+</span>             <span class="global">print</span>(event.server)         <span class="comment">--&gt;  "table: 06A30AD3" == obj1
+</span>             <span class="global">print</span>(event.name)           <span class="comment">--&gt;  "stop"
+</span>             <span class="global">print</span>(event.n)              <span class="comment">--&gt;  "2"
+</span>             <span class="global">print</span>(event[<span class="number">1</span>])             <span class="comment">--&gt;  "arg1"
+</span>             <span class="global">print</span>(event[<span class="number">2</span>])             <span class="comment">--&gt;  "arg2"
+</span>         <span class="keyword">end</span>
+     <span class="keyword">end</span>,
+ }
+ obj1:subscribe(obj2, obj2.eventhandler, obj1.events.stop)
+
+ ..... <span class="keyword">do</span> some stuff, start the copas loop, etc.
+
+ <span class="comment">-- raise the stop event
+</span> <span class="keyword">local</span> e = obj1:dispatch(obj1.events.stop, <span class="string">"arg1"</span>, <span class="string">"arg2"</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "event_server:unsubscribe"></a>
+    <strong>event_server:unsubscribe (client, event)</strong>
+    </dt>
+    <dd>
+    Unsubscribes a client from the events of this server.  It functions as a shortcut
+ to <a href="../modules/eventer.html#clientunsubscribe">clientunsubscribe</a> .
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">client</span>
+         the client identifier (usually the client object table), must be the same as used while subscribing.
+        </li>
+        <li><span class="parameter">event</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         the event (from the list <a href="../modules/eventer.html#event_server.events">event_server.events</a> ) to unsubscribe from or <code>nil</code> to unsubscribe from all events
+        </li>
+    </ul>
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/eventer.html#decorate">decorate</a>
+    </ul>
+
+
+</dd>
+</dl>
+    <h2><a name="Class_event"></a>Class event </h2>
+
+ Class returned for a dispatched event, with synchonization capabilities
+    <dl class="function">
+    <dt>
+    <a name = "event.queueitems"></a>
+    <strong>event.queueitems</strong>
+    </dt>
+    <dd>
+    Table/list with queueitems created.  One for each event subscription dispatched.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "event:cancel"></a>
+    <strong>event:cancel ()</strong>
+    </dt>
+    <dd>
+    Cancels all event related queueitems from the Copas background worker queues.
+ Queueitems will remain in the event object itself, but will be flagged
+ as cancelled.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "event:finish"></a>
+    <strong>event:finish (timeout)</strong>
+    </dt>
+    <dd>
+    Waits for an event to be completed in a blocking mode.  That is; all event queueitems have been completed by the workers
+ (this does not include additional events spawned from them). Current thread will
+ NOT yield while waiting, it will only process the event related queueitems. It is blocking, so timers, sockets
+ and workers will not run in the mean time, so executing this method may take a long time so use carefully!<br/>
+ If it should not block, then use <a href="../modules/eventer.html#event:waitfor">event:waitfor</a> .
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+         timeout (in seconds), use <code>nil</code> for no timeout
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <code>true</code> when completed, or <code>nil, "timeout"</code> in case of a timeout (in case of a timeout, the unfinished queueitems will remain in the worker queues, they will not be cancelled).
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/eventer.html#event:waitfor">event:waitfor</a>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "event:waitfor"></a>
+    <strong>event:waitfor (timeout)</strong>
+    </dt>
+    <dd>
+    Waits for an event to be completed in a non-blocking mode.  That is; all event queueitems have been completed by the workers,
+ this does not include additional events spawned from them. Current thread/worker will
+ yield while waiting (so cannot be used from the mainthread!).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">timeout</span>
+         timeout (in seconds), use <code>nil</code> for no timeout
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <code>true</code> when completed, or <code>nil, "timeout"</code> in case of a timeout.
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/eventer.html#event:finish">event:finish</a>
+    </ul>
+
+
+</dd>
+</dl>
+    <h2><a name="Eventer_core_functions"></a>Eventer core functions </h2>
+
+ Generally these functions are not used, except for <a href="../modules/eventer.html#decorate">decorate</a>  which implements regular
+ object oriented access to all others.
+    <dl class="function">
+    <dt>
+    <a name = "clientsubscribe"></a>
+    <strong>clientsubscribe (client, server, handler, event)</strong>
+    </dt>
+    <dd>
+    Subscribes a client to events.
+ The prefered way is to use the <a href="../modules/eventer.html#decorate">decorate</a>  function and then call <a href="../modules/eventer.html#event_server:subscribe">event_server:subscribe</a> .
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">client</span>
+         unique client parameter (usually self)
+        </li>
+        <li><span class="parameter">server</span>
+         a unique key to identify the specific server (usually the server object/table)
+        </li>
+        <li><span class="parameter">handler</span>
+         event handler function to be called, it will be wrapped as a background worker-coroutine. If <code>client</code> is either a table or a userdata (object types), then the handler will be called with 2 arguments; <code>client</code> and <code>worker</code>, otherwise it will only get <code>worker</code>. See <a href="../modules/eventer.html#event_server:subscribe">event_server:subscribe</a>  for an example of how the parameters are passed to the handler.
+        </li>
+        <li><span class="parameter">event</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         event name, or <code>nil</code> to subscribe to all events
+        </li>
+    </ul>
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="../modules/eventer.html#decorate">decorate</a></li>
+         <li><a href="../modules/eventer.html#event_server:subscribe">event_server:subscribe</a></li>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "clientunsubscribe"></a>
+    <strong>clientunsubscribe (client, server, event)</strong>
+    </dt>
+    <dd>
+    Unsubscribes a client from events.
+ The prefered way is to use the <a href="../modules/eventer.html#decorate">decorate</a>  function and then call <a href="../modules/eventer.html#event_server:unsubscribe">event_server:unsubscribe</a> .
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">client</span>
+         unique client parameter (usually self)
+        </li>
+        <li><span class="parameter">server</span>
+         a unique key to identify the specific server (usually the server object/table), or <code>nil</code> to unsubscribe from all servers
+        </li>
+        <li><span class="parameter">event</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         event string, or <code>nil</code> to unsubscribe from all events
+        </li>
+    </ul>
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="../modules/eventer.html#decorate">decorate</a></li>
+         <li><a href="../modules/eventer.html#event_server:unsubscribe">event_server:unsubscribe</a></li>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "decorate"></a>
+    <strong>decorate (server, events)</strong>
+    </dt>
+    <dd>
+    Decorates an object as an event server.  It will provide the object with the
+ following methods/tables; <ul>
+ <li><a href="../modules/eventer.html#event_server:subscribe">event_server:subscribe</a> </li>
+ <li><a href="../modules/eventer.html#event_server:unsubscribe">event_server:unsubscribe</a> </li>
+ <li><a href="../modules/eventer.html#event_server:dispatch">event_server:dispatch</a> </li>
+ <li><a href="../modules/eventer.html#event_server.events">event_server.events</a> </li>
+ </ul>Additionally it will register the object as event server. The methods are
+ shortcuts to the <a href="../modules/eventer.html#">eventer</a>  methods <code>clientsubscribe, clientunsubscribe, serverdispatch</code>. See <a href="../modules/eventer.html#event_server">event_server</a>  for some examples.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">server</span>
+         The event server object that will be decorated with the methods and tables listed above.
+        </li>
+        <li><span class="parameter">events</span>
+         A list of event strings (see <a href="../modules/eventer.html#event_server.events">event_server.events</a> ). This list will be copied to a new table (as a set) and stored in <code>server.events</code>
+        </li>
+    </ul>
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/eventer.html#event_server">event_server</a>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "getclients"></a>
+    <strong>getclients (server)</strong>
+    </dt>
+    <dd>
+    Gets a list of clients of a particular server.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">server</span>
+         the server for which to get the subscribed clients
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <code>nil</code> if the server is unregistered, otherwise a table with subscriptions. The result table is keyed by 'event string' and each value is a list of clients that is subscribed to this event.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"> <span class="keyword">local</span> list = copas.eventer.getclients(copas)     <span class="comment">-- get list of Copas clients
+</span> list = list[copas.events.loopstarted]            <span class="comment">-- get clients of the 'loopstarted' event
+</span> <span class="global">print</span> (<span class="string">"the Copas 'loopstarted' event has "</span> .. #list .. <span class="string">" clients subscribed."</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "getsubscriptions"></a>
+    <strong>getsubscriptions (client)</strong>
+    </dt>
+    <dd>
+    Gets a list of subscriptions of a particular client.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">client</span>
+         the client for which to get the subscriptions
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <code>nil</code> if the client has no subscriptions, otherwise a table with subscriptions. The result table is keyed by 'server' and each value is a list of eventstrings the client is subscribed to on this server.
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "serverdispatch"></a>
+    <strong>serverdispatch (server, event, ...)</strong>
+    </dt>
+    <dd>
+    Dispatches an event from a server.
+ The prefered way is to use the <a href="../modules/eventer.html#decorate">decorate</a>  function and then call <a href="../modules/eventer.html#event_server:dispatch">event_server:dispatch</a>
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">server</span>
+         a unique key to identify the specific server
+        </li>
+        <li><span class="parameter">event</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         event string
+        </li>
+        <li><span class="parameter">...</span>
+         other arguments to be passed on as arguments to the eventhandler
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <a href="../modules/eventer.html#event">event</a>
+    </ol>
+
+
+    <h3>See also:</h3>
+    <ul>
+         <li><a href="../modules/eventer.html#decorate">decorate</a></li>
+         <li><a href="../modules/eventer.html#event_server:dispatch">event_server:dispatch</a></li>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "serverregister"></a>
+    <strong>serverregister (server, eventlist)</strong>
+    </dt>
+    <dd>
+    Registers a server that will fire events.
+ The prefered way is to use the <a href="../modules/eventer.html#decorate">decorate</a>  function.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">server</span>
+         a unique key to identify the specific server. Usually a table/object, but can be a string or whatever, as long as it is unique
+        </li>
+        <li><span class="parameter">eventlist</span>
+         list of strings with event names (table keys are unused, only values, so may also be a set)
+        </li>
+    </ul>
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/eventer.html#decorate">decorate</a>
+    </ul>
+
+
+</dd>
+    <dt>
+    <a name = "serverunregister"></a>
+    <strong>serverunregister (server)</strong>
+    </dt>
+    <dd>
+    Unregisters a server that will no longer fire events
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">server</span>
+         a unique key to identify the specific server
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "seterrorhandler"></a>
+    <strong>seterrorhandler (handler)</strong>
+    </dt>
+    <dd>
+    Sets the error handler function to be used when calling eventhandlers.
+ to an <a href="http://www.lua.org/manual/5.1/manual.html#pdf-xpcall">xpcall</a>  call)
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">handler</span>
+         the error handler function (the errorhandler will be passed along
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+</dl>
+    <h2><a name="Eventer_and_Copas_events"></a>Eventer and Copas events </h2>
+
+ List of events as generated by Copas and the Eventer itself, once the <a href="../modules/eventer.html#">eventer</a>  module has been loaded.
+    <dl class="function">
+    <dt>
+    <a name = "copas.eventer.events"></a>
+    <strong>copas.eventer.events</strong>
+    </dt>
+    <dd>
+    Event generated by the eventer.
+
+
+    <h3>Fields:</h3>
+    <ul>
+        <li><span class="parameter">register</span>
+         Fired whenever a new server registers events (note: 'copas' and 'copas.eventer' will have been registered before any client had a chance to subscribe, so these subscriptions cannot be caught by using this event)
+        </li>
+        <li><span class="parameter">unregister</span>
+         Fired whenever a server unregisters its events
+        </li>
+        <li><span class="parameter">subscribe</span>
+         Fired whenever a client subscribes to events
+        </li>
+        <li><span class="parameter">unsubscribe</span>
+         Fired whenever a client unsubscribes from events
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "copas.events"></a>
+    <strong>copas.events</strong>
+    </dt>
+    <dd>
+    Events generated by Copas.  The event structure for Copas will only be
+ initialized when the eventer is used.
+
+
+    <h3>Fields:</h3>
+    <ul>
+        <li><span class="parameter">loopstarting</span>
+         Fired <strong>before</strong> the copas loop starts. It will immediately be finished (see <a href="../modules/eventer.html#event:finish">event:finish</a> ). So while the event threads run there will be no timers, sockets, nor workers running. Only the threads created for the 'loopstarting' event will run.
+        </li>
+        <li><span class="parameter">loopstarted</span>
+         Fired when the Copas loop has started, by now timers, sockets and workers are running.
+        </li>
+        <li><span class="parameter">loopstopping</span>
+         Fired when the Copas loop starts exiting (see <code>exitloop</code>). For as long as not all event threads (for this specific event) have finished, the timers, sockets and workers will keep running.
+        </li>
+        <li><span class="parameter">loopstopped</span>
+         Fired <strong>after</strong> the Copas loop has finished, this event will immediately be finished (see <a href="../modules/eventer.html#event:finish">event:finish</a> ), so the timers, sockets and workers no longer run.
+        </li>
+    </ul>
+
+
+
+    <h3>See also:</h3>
+    <ul>
+         <a href="../modules/eventer.html#event:finish">event:finish</a>
+    </ul>
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.2</a></i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

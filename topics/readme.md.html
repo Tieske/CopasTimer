@@ -1,0 +1,229 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>CopasTimer</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>CopasTimer</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Purpose">Purpose </a></li>
+<li><a href="#Usage">Usage </a></li>
+<li><a href="#Changelog">Changelog </a></li>
+</ul>
+
+
+<h2>Topics</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><strong>readme</strong></li>
+</ul>
+<h2>Modules</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../modules/eventer.html">eventer</a></li>
+  <li><a href="../modules/timer.html">timer</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+
+<h1>Copas Timer</h1>
+<p>Copas Timer is free software under the MIT/X11 license. <br/>
+Copyright 2011-2014 Thijs Schreijer</p>
+
+<p><a href="http://tieske.github.com/CopasTimer/">Documentation</a> and <a href="http://github.com/Tieske/CopasTimer">sourcecode</a> are on GitHub</p>
+
+<p><a name="Purpose"></a></p>
+<h2>Purpose</h2>
+<p>Copas Timer is an add on module for the Copas socket scheduler. Copas Timer implements background workers and timers along side the sockets. As an optional component the eventer module is available which allows for event-driven code. The events are being run as background workers in the scheduler.</p>
+
+<p>Note: this is still all coroutine based, so it is not non-blocking asynchroneous!</p>
+
+<p><a name="Usage"></a></p>
+<h2>Usage</h2>
+<p>Copas Timer integrates into the Copas module, so there is no separate module table for it. When you <code>require("copas.timer")</code> it will return the modified Copas module table.</p>
+
+<p>Below some simple examples for using the Copas Timer functionalities.</p>
+<h3>Timers</h3>
+<p>The timers are created using callback functions;</p>
+
+
+<pre>
+<span class="keyword">local</span> copas = <span class="global">require</span>(<span class="string">"copas.timer"</span>)
+
+<span class="comment">-- define timer callbacks
+</span><span class="keyword">local</span> arm_cb = <span class="keyword">nil</span>
+<span class="keyword">local</span> expire_cb = <span class="keyword">function</span>() <span class="global">print</span>(<span class="string">"executing the timer"</span>) <span class="keyword">end</span>
+<span class="keyword">local</span> cancel_cb = <span class="keyword">nil</span>
+<span class="comment">-- define timer parameters
+</span><span class="keyword">local</span> recurring = <span class="keyword">true</span>
+<span class="keyword">local</span> interval = <span class="number">5</span>  <span class="comment">--&gt; in seconds
+</span>
+<span class="keyword">local</span> t = copas.newtimer(arm_cb, expire_cb, cancel_cb, recurring):arm(interval)
+
+<span class="comment">-- add some sockets here
+</span>
+copas.loop()    <span class="comment">--&gt; start the scheduler and execute the timers
+</span>
+</pre>
+
+<h3>Workers</h3>
+<p>Workers are created as coroutines from functions. Each worker gets its own queue of data to work on, and they will only run when data is available.</p>
+
+
+<pre>
+<span class="keyword">local</span> copas = <span class="global">require</span>(<span class="string">"copas.timer"</span>)
+
+<span class="keyword">local</span> w = copas.addworker(<span class="keyword">function</span>(queue)
+    <span class="comment">-- do some initializing here... will be run immediately upon
+</span>    <span class="comment">-- adding the worker
+</span>    <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+      data = queue:pop()    <span class="comment">-- fetch data from queue, implicitly yields the coroutine
+</span>      <span class="comment">-- handle the retrieved data here
+</span>      <span class="global">print</span>(data)
+      <span class="comment">-- do some lengthy stuff
+</span>      queue:pause()         <span class="comment">-- implicitly yields, without fetching new data
+</span>      <span class="comment">-- do more lengthy stuff
+</span>    <span class="keyword">end</span>
+  <span class="keyword">end</span>)
+
+<span class="comment">-- enqueue data for the new worker
+</span>w:push(<span class="string">"here is some data"</span>)
+
+<span class="comment">-- add some sockets here
+</span>
+copas.loop()
+</pre>
+
+
+<h3>Events</h3>
+<p>The eventer module adds event capabilities to copas. The eventhandlers run as workers and process
+event data from their worker queues.</p>
+
+<p>Copas itself will also be generating events once the eventer module is used;</p>
+
+<pre>
+<span class="keyword">local</span> copas = <span class="global">require</span>(<span class="string">"copas.timer"</span>)
+<span class="global">require</span>(<span class="string">"copas.eventer"</span>)   <span class="comment">-- will be installed inside the global copas table; copas.eventer
+</span>
+<span class="keyword">local</span> my_app = {
+  before_start = <span class="keyword">function</span>(self, eventqueue)
+    <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+      <span class="keyword">local</span> event = eventqueue:pop()
+
+      <span class="comment">-- initialize stuff and create some sockets here...
+</span>
+    <span class="keyword">end</span>
+  <span class="keyword">end</span>,
+
+  after_start = <span class="keyword">function</span>(self, eventqueue)
+    <span class="keyword">while</span> <span class="keyword">true</span> <span class="keyword">do</span>
+      <span class="keyword">local</span> event = eventqueue:pop()
+
+      <span class="comment">-- do some stuff
+</span>
+    <span class="keyword">end</span>
+  <span class="keyword">end</span>,
+}
+
+copas:subscribe(my_app, my_app.before_start, copas.events.loopstarting)
+copas:subscribe(my_app, my_app.after_start, copas.events.loopstarted)
+
+copas.loop()
+</pre>
+
+
+<p>Adding event capabilities to your own object is easy;</p>
+
+
+<pre>
+<span class="keyword">local</span> copas = <span class="global">require</span>(<span class="string">"copas.timer"</span>)
+<span class="global">require</span>(<span class="string">"copas.eventer"</span>)   <span class="comment">-- will be installed inside the global copas table; copas.eventer
+</span>
+<span class="comment">-- create a module table and enable it with 4 events;
+</span><span class="keyword">local</span> my_module = {}
+copas.eventer.decorate(my_module, {<span class="string">"start"</span>, <span class="string">"txerror"</span>, <span class="string">"rxerror"</span>, <span class="string">"stop"</span>})
+
+my_module.start = <span class="keyword">function</span>(self)
+    <span class="comment">-- lets dispatch our start event here
+</span> self:dispatch(self.events.start, <span class="string">"start data 1"</span>, <span class="string">"start data 2"</span>)
+<span class="keyword">end</span>
+
+<span class="keyword">return</span> my_module
+</pre>
+
+
+
+<p><a name="Changelog"></a></p>
+<h2>Changelog</h2>
+<h3>xx-xxx-2014; release 1.0</h3>
+
+<ul>
+    <li>background workers have been completely revised to work as coroutines instead of callbacks. This also reflects in the <a href="../modules/eventer.html#">eventer</a>  module, where event handlers must now be setup as coroutines and get their event data from a queue.</li>
+</ul>
+
+<h3>07-Mar-2013; release 0.4.3</h3>
+
+<ul>
+    <li><code>eventer.decorate()</code> function now protects access to <code>events</code> table so invalid events throw an error</li>
+    <li>fixed bug in timer errorhandler function</li>
+</ul>
+
+<h3>04-Jun-2012; release 0.4.2</h3>
+
+<ul>
+    <li>fixed undefined behaviour when arming an already armed timer</li>
+    <li>removed default 1 second interval, now throws an error if the first call to <code>arm()</code> does not provide an interval.</li>
+    <li>bugfix, worker could not remove itself from the worker queue</li>
+    <li>added method <code>copas.waitforcondition()</code> to the timer module</li>
+</ul>
+
+<h3>07-Nov-2011; release 0.4.1</h3>
+
+<ul>
+    <li>bugfix, timer could not be cancelled from its own handler.</li>
+    <li>bugfix, worker completed elswhere is no longer resumed.</li>
+    <li>changed <code>exitloop()</code> and <code>isexiting()</code> members, see docs for use (this is breaking!)</li>
+    <li>added an optional eventer module that fires events as background tasks</li>
+    <li>restructured files, no longer 'copastimer.lua' but now 'copas/timer.lua' (and 'copas/eventer.lua'). (this is breaking!)</li>
+</ul>
+
+<h3>24-Oct-2011; Initial release 0.4.0</h3>
+
+<hr/>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.2</a></i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>
