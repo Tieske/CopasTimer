@@ -24,7 +24,7 @@
 
 local copas = require("copas")
 local socket = require("socket")
-require("coxpcall")
+local cocall = require("coxpcall")
 local pcall, xpcall = copcall, coxpcall
 
 local timerid = 1		-- counter to create unique timerid's
@@ -158,6 +158,9 @@ local popthread = function(t)
         return w
     else
         -- specific one specified, have to go look for it
+        if type(t)=="thread" then
+          t = cocall.running(t);  --undo any coxpcall created coroutines
+        end
         for i, v in ipairs(activeworkers) do
             if v == t or v.thread == t then
                 -- found it, return it
@@ -183,6 +186,9 @@ end
 --     print ("No background worker found, so I'm on my own")
 -- end
 copas.getworker = function(t)
+    if type(t)=="thread" then
+      t = cocall.running(t);  --undo any coxpcall created coroutines
+    end
     if not t then
         return nil
     else
@@ -206,6 +212,9 @@ end
 -- @return[1] `worker` 
 -- @return[2] `nil` if the coroutine/worker wasn't found
 copas.removeworker = function(t)
+    if type(t)=="thread" then
+      t = cocall.running(t);  --undo any coxpcall created coroutines
+    end
     if t then
         local tt = popthread(t)
         if tt then
@@ -338,8 +347,7 @@ copas.addworker = function(obj, func, errhandler)
     -- implicitly yields the coroutine until new data has been pushed in the `worker` queue.
     -- @return data field of the next `queueitem` popped from the queue
     function worker:pop()
-        --assert(coroutine.running() == self.thread,"pop() may only be called by the workerthread itself")
-        -- the assert fails because in 5.1 coxpcall creates a new coroutine. 5.2 is ok.
+        assert(cocall.running() == self.thread,"pop() may only be called by the workerthread itself")
         if self._lastpopped then
             --contains previously popped data element, mark as completed
             self._lastpopped:complete()
@@ -358,8 +366,7 @@ copas.addworker = function(obj, func, errhandler)
     -- that this method does not pop a new element from the `worker` queue.
     -- @return `true`
     function worker:pause()
-        --assert(coroutine.running() == self.thread,"pause() may only be called by the workerthread itself")
-        -- the assert fails because in 5.1 coxpcall creates a new coroutine. 5.2 is ok.
+        assert(cocall.running() == self.thread,"pause() may only be called by the workerthread itself")
         table.insert(self.queue,1,true)  -- insert fake element; true
         coroutine.yield()
         return table.remove(self.queue, 1) -- returns the fake element; true
