@@ -87,8 +87,6 @@ Copyright 2011-2014 Thijs Schreijer</p>
 </span>
 <span class="keyword">local</span> t = copas.newtimer(arm_cb, expire_cb, cancel_cb, recurring):arm(interval)
 
-<span class="comment">-- add some sockets here
-</span>
 copas.loop()    <span class="comment">--&gt; start the scheduler and execute the timers
 </span>
 </pre>
@@ -116,8 +114,6 @@ copas.loop()    <span class="comment">--&gt; start the scheduler and execute the
 <span class="comment">-- enqueue data for the new worker
 </span>w:push(<span class="string">"here is some data"</span>)
 
-<span class="comment">-- add some sockets here
-</span>
 copas.loop()
 </pre>
 
@@ -182,6 +178,12 @@ my_module.start = <span class="keyword">function</span>(self)
 
 <p><a name="Changelog"></a></p>
 <h2>Changelog</h2>
+<h3>xx-Mar-2014; release 1.1</h3>
+
+<ul>
+    <li>the <code>worker:pause()</code> method now accepts a number of seconds as parameter</li>
+</ul>
+
 <h3>10-Feb-2014; release 1.0</h3>
 
 <ul>

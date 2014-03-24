@@ -1,15 +1,5 @@
 local socket = require("socket")
 local copas = require("copas.timer")
-host = "localhost"
-port = 50000
-
-
--- function for socket handling
-function handle(skt)
-  skt = copas.wrap(skt)
-  reqdata = skt:receive(pattern)
-  -- do some stuff
-end
 
 local someerror = function()
 	data = data * nil  -- this will error
@@ -85,16 +75,13 @@ local errtimer=function()
 end
 
 
-server = socket.bind(host, port)            -- create a server
-copas.addserver(server, handle)
-
 -- setup a delayed executioner example
 local det = socket.gettime()
 copas.delayedexecutioner(5, function(t)
         print(t .. " and it was " .. socket.gettime() - det .. " to be precise.")
     end, "This should display in 5 seconds from now.")
 
-print("Waiting for some bogus connection... will exit after the count down.")
+print("Starting loop... will exit after the count down.")
 copas.newtimer(silly, silly, nil, true, nil):arm(2)  -- silly timer
 copas.newtimer(nil, errtimer, nil, false, nil):arm(1)  -- error timer
 

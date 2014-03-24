@@ -132,6 +132,10 @@
 	<td class="summary">Holds the errorhandler for this worker</td>
 	</tr>
 	<tr>
+	<td class="name" nowrap><a href="#worker.paused">worker.paused</a></td>
+	<td class="summary">Flag indicating that the worker has been paused by a call to <a href="../modules/timer.html#worker:pause">worker:pause</a>  (with parameter <code>seconds</code> > 0)</td>
+	</tr>
+	<tr>
 	<td class="name" nowrap><a href="#worker.queue">worker.queue</a></td>
 	<td class="summary">Holds the list of <a href="../modules/timer.html#queueitem">queueitem</a>  objects waiting to be processed by the worker</td>
 	</tr>
@@ -140,7 +144,11 @@
 	<td class="summary">Holds the coroutine for this worker</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#worker:pause">worker:pause ()</a></td>
+	<td class="name" nowrap><a href="#worker.timer">worker.timer</a></td>
+	<td class="summary">Holds the timer that monitors the delay by <a href="../modules/timer.html#worker:pause">worker:pause</a> .</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#worker:pause">worker:pause (seconds)</a></td>
 	<td class="summary">Yields control in case of lengthy operations.</td>
 	</tr>
 	<tr>
@@ -508,6 +516,27 @@
 
 </dd>
     <dt>
+    <a name = "worker.paused"></a>
+    <strong>worker.paused</strong>
+    </dt>
+    <dd>
+    Flag indicating that the worker has been paused by a call to <a href="../modules/timer.html#worker:pause">worker:pause</a>  (with parameter <code>seconds</code> > 0)
+
+
+    <ul>
+        <li><span class="parameter">paused</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
     <a name = "worker.queue"></a>
     <strong>worker.queue</strong>
     </dt>
@@ -550,14 +579,41 @@
 
 </dd>
     <dt>
+    <a name = "worker.timer"></a>
+    <strong>worker.timer</strong>
+    </dt>
+    <dd>
+    Holds the timer that monitors the delay by <a href="../modules/timer.html#worker:pause">worker:pause</a> .  If the timer is cancelled, the worker will be resumed.
+
+
+    <ul>
+        <li><span class="parameter">timer</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
     <a name = "worker:pause"></a>
-    <strong>worker:pause ()</strong>
+    <strong>worker:pause (seconds)</strong>
     </dt>
     <dd>
     Yields control in case of lengthy operations.  Similar to <a href="../modules/timer.html#worker:pop">worker:pop</a>  except
  that this method does not pop a new element from the <a href="../modules/timer.html#worker">worker</a>  queue.
 
 
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">seconds</span>
+         (optional) the number of seconds to pause, default = 0
+        </li>
+    </ul>
 
     <h3>Returns:</h3>
     <ol>

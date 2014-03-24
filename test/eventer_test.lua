@@ -2,9 +2,6 @@ local copas = require ("copas.timer")
 local ev = require("copas.eventer")
 local socket = require("socket")
 
-host = "localhost"
-port = 50000
-
 -- create an object with event capabilities
 local object1 = {
 
@@ -83,15 +80,6 @@ copas.eventer.clientsubscribe(object2, object1, object2.eventhandler)  -- subscr
 
 
 -- now go startup a loop to get going
-
-server = socket.bind(host, port)            -- create a dummy server otherwise copas won't run the test
-copas.addserver(server, function (skt)
-        -- function for socket handling
-        skt = copas.wrap(skt)
-        reqdata = skt:receive(pattern)
-        -- do some stuff
-    end)
-
-print("Waiting for some bogus connection... will exit after count hits 10")
+print("Sarting loop... will exit after count hits 10")
 copas.loop()                          -- enter loop
 print ("bye, bye...")

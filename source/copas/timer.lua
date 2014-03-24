@@ -127,7 +127,7 @@ end
 -- Adds a background worker to the end of the thread lists. Either active or inactive
 -- @param t thread table (see copas.addworker()) to add to the list
 local pushthread = function(t)
-    if #t.queue == 0 then
+    if (#t.queue == 0) or t.paused then  -- inactive; empty queue, or paused
       inactiveworkers[t.thread] = t
     else
       if not activeworkers[t.thread] then
@@ -323,6 +323,15 @@ copas.addworker = function(obj, func, errhandler)
 -- Holds the list of `queueitem` objects waiting to be processed by the worker
 -- @field queue
         
+---
+-- Flag indicating that the worker has been paused by a call to `worker:pause` (with parameter `seconds` > 0)
+-- @field paused
+        
+---
+-- Holds the timer that monitors the delay by `worker:pause`. If the timer is cancelled, the worker will be resumed.
+-- @field timer
+        
+        
     ------------------------------------------------------
     -- Adds data to the `worker` queue. If the `worker` has died, it will return an error
     -- and nothing will be enqueued.
@@ -364,10 +373,24 @@ copas.addworker = function(obj, func, errhandler)
     ------------------------------------------------------
     -- Yields control in case of lengthy operations. Similar to `worker:pop` except
     -- that this method does not pop a new element from the `worker` queue.
+    -- @param seconds (optional) the number of seconds to pause, default = 0
     -- @return `true`
-    function worker:pause()
+    function worker:pause(seconds)
         assert(cocall.running() == self.thread,"pause() may only be called by the workerthread itself")
+        seconds = seconds or 0
         table.insert(self.queue,1,true)  -- insert fake element; true
+        if seconds > 0 then
+          self.paused = true
+          if not self.timer then
+            local h = function() -- arm/cancel handler
+                        self.paused = nil
+                        inactiveworkers[self.thread] = nil
+                        pushthread(self)
+                      end 
+            self.timer = copas.newtimer(nil, h, h, false, nil)
+          end
+          self.timer:arm(seconds)
+        end
         coroutine.yield()
         return table.remove(self.queue, 1) -- returns the fake element; true
     end

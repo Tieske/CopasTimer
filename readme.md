@@ -29,8 +29,6 @@ local interval = 5  --> in seconds
 
 local t = copas.newtimer(arm_cb, expire_cb, cancel_cb, recurring):arm(interval)
 
--- add some sockets here
-
 copas.loop()    --> start the scheduler and execute the timers
 
 ````
@@ -55,8 +53,6 @@ local w = copas.addworker(function(queue)
 
 -- enqueue data for the new worker
 w:push("here is some data")   
-
--- add some sockets here
 
 copas.loop()
 ````
@@ -116,6 +112,10 @@ return my_module
 
 
 ##Changelog
+###xx-Mar-2014; release 1.1
+
+- the `worker:pause()` method now accepts a number of seconds as parameter
+
 ###10-Feb-2014; release 1.0
 
 - background workers have been completely revised to work as coroutines instead of callbacks. This also reflects in the `eventer` module, where event handlers must now be setup as coroutines and get their event data from a queue.
