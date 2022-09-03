@@ -1,3 +1,5 @@
+This is obsolete. newer version of Copas do have timers natively.
+
 #Copas Timer
 Copas Timer is free software under the MIT/X11 license.  
 Copyright 2011-2014 Thijs Schreijer
